@@ -1,0 +1,55 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 2b843699ccb47a85cfb8affaa0749dcca7b04e53b03921a55bdd6a5bf2235c6e
+
+name:           grid-proto
+version:        0.1.0.0
+category:       Game
+homepage:       https://github.com/jxv/grid-proto#readme
+author:         Joe Vargas
+maintainer:     joevargas92@gmail.com
+copyright:      2019 Joe Vargas
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    README.md
+
+library
+  exposed-modules:
+      GridProto
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      src
+  build-depends:
+      aeson >=1.4
+    , base >=4.7 && <5
+    , containers >=0.6
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-gfx
+    , text >=1.2.3
+    , vector >=0.12
+  default-language: Haskell2010
+
+executable grid-proto-example
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      app
+  build-depends:
+      aeson >=1.4
+    , base >=4.7 && <5
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-gfx
+    , text >=1.2.3
+    , vector >=0.12
+  default-language: Haskell2010

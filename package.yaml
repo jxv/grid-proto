@@ -1,0 +1,34 @@
+name:                grid-proto
+version:             0.1.0.0
+#synopsis:
+#description:
+homepage:            https://github.com/jxv/grid-proto#readme
+license:             BSD3
+author:              Joe Vargas
+maintainer:          joevargas92@gmail.com
+copyright:           2019 Joe Vargas
+category:            Game
+extra-source-files:
+- README.md
+
+dependencies:
+  - aeson >= 1.4
+  - base >= 4.7 && < 5
+  - sdl2 >= 2.4.0
+  - sdl2-gfx
+  - containers >= 0.6
+  - linear
+  - text >= 1.2.3
+  - vector >= 0.12
+
+library:
+  exposed-modules: GridProto
+  source-dirs: src
+
+executables:
+  grid-proto-example:
+    source-dirs: app
+    main: Main.hs
+    dependencies:
+      - grid-proto
+
