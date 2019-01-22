@@ -23,6 +23,9 @@ import Data.Text (pack)
 import Data.Word (Word8)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
+import Data.Semigroup (Semigroup(..))
+import Data.Monoid (Monoid(..))
+import Control.Applicative ((<|>))
 
 import qualified SDL
 import qualified SDL.Primitive as Gfx
@@ -133,6 +136,12 @@ data Cell = Cell
 
 instance ToJSON Cell
 instance FromJSON Cell
+
+instance Semigroup Cell where
+  (<>) (Cell aShape aFill) (Cell bShape bFill) = Cell (bShape <|> aShape) (bFill <|> aFill)
+
+instance Monoid Cell where
+  mempty = Cell Nothing Nothing
 
 data GridProto s = GridProto
   { title :: String
