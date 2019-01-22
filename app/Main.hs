@@ -11,6 +11,7 @@ gp = GridProto
   , rows = sides
   , cols = sides
   , cellPixelSize = 64
+  , backgroundColor = Nothing
   , setupFn = return (0, 0, False)
   , updateFn = update
   , cleanupFn = const (return ())
@@ -30,7 +31,7 @@ cells :: Int -> (Int, Int, Bool) -> Map (Int, Int) Cell
 cells sides (mx,my,click) = fromList $ do
   y <- [0..(sides - 1)]
   x <- [0..(sides - 1)]
-  let color =
+  let color = Just $
         if (mx,my) == (x,y)
           -- Mouse color
           then if click then Green else Red

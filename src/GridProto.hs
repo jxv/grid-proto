@@ -128,7 +128,7 @@ instance FromJSON Input
 
 data Cell = Cell
   { shape :: Maybe (Shape, Color)
-  , fill :: Color
+  , fill :: Maybe Color
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Cell
@@ -139,6 +139,7 @@ data GridProto s = GridProto
   , rows :: Int
   , cols :: Int
   , cellPixelSize :: Int
+  , backgroundColor :: Maybe Color
   , setupFn :: IO s
   , updateFn :: Input -> s -> IO s
   , cleanupFn :: s -> IO ()
@@ -155,6 +156,7 @@ runGridProto GridProto
   , rows
   , cols
   , cellPixelSize
+  , backgroundColor
   , setupFn
   , updateFn
   , cellsFn
@@ -199,8 +201,9 @@ drawCellMap renderer cellSize m = forM_ (toList m) $ \((x,y), Cell{shape,fill}) 
     Nothing -> return ()
     Just shape' -> drawShape renderer cellSize (x,y) shape'
 
-drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Color -> IO ()
-drawFill renderer cellSize (x,y) color = do
+drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
+drawFill _ _ _ Nothing = return ()
+drawFill renderer cellSize (x,y) (Just color) = do
   let fx0 = x * cellSize
       fx1 = (x + 1) * cellSize
       fy0 = y * cellSize
