@@ -10,7 +10,7 @@ gp = GridProto
   { title = "Hello World"
   , rows = sides
   , cols = sides
-  , cellPixelSize = 32
+  , cellPixelSize = 64
   , setupFn = return (0, 0, False)
   , updateFn = update
   , cleanupFn = const (return ())
@@ -18,7 +18,7 @@ gp = GridProto
   , quitFn = quit
   }
   where
-    sides = 32
+    sides = 8
 
 update :: Input -> (Int, Int, Bool) -> IO (Int, Int, Bool)
 update input state = case mouse input of
@@ -35,8 +35,16 @@ cells sides (mx,my,click) = fromList $ do
           -- Mouse color
           then if click then Green else Red
           -- Alternate background colors
-          else if (x + y) `mod` 2 == 0 then DarkGray else Gray
-  return ((x,y), Cell (Just (Square, DarkBlue)) color)
+          else if (x + y) `mod` 2 == 0 then DarkBrown else Brown
+  let shape =
+        if (x + y) `mod` 2 == 1
+          then Nothing
+          else if y >= 0 && y <= 2
+            then Just (FillCircle,  White)
+            else if y >= 5 && y <= 7
+              then Just (FillCircle, Black)
+              else Nothing
+  return ((x,y), Cell shape color)
 
 quit :: (Int, Int, Bool) -> Bool
 quit (0,0,True) = True

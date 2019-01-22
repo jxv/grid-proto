@@ -74,8 +74,9 @@ data Shape
   | Square
   | FillSquare
   | Plus
-  | Minus
-  | X
+  | Dash
+  | Bar
+  | Cross
   deriving (Enum, Eq, Bounded, Show, Generic)
 
 instance ToJSON Shape
@@ -145,6 +146,9 @@ data GridProto s = GridProto
   , quitFn :: s -> Bool
   }
 
+num :: (Integral a, Num b) => a -> b
+num = fromIntegral
+
 runGridProto :: GridProto s -> IO ()
 runGridProto GridProto
   { title
@@ -158,14 +162,14 @@ runGridProto GridProto
   }
   = do
   SDL.initialize [SDL.InitVideo, SDL.InitAudio]
-  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (fromIntegral $ rows * cellPixelSize) (fromIntegral $ cols * cellPixelSize) }
+  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * cellPixelSize) (num $ cols * cellPixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   initialState <- setupFn
   ($ initialState) $ fix $ \loop state -> do
     let quit = quitFn state
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
-    let (V2 mouseX mouseY) = fromIntegral <$> mousePos
+    let (V2 mouseX mouseY) = num <$> mousePos
     let mouseCellPos = cellByMousePosition cellPixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let input = makeInput mouseCellPos mouseClick events
@@ -203,57 +207,133 @@ drawFill renderer cellSize (x,y) color = do
       fy1 = (y + 1) * cellSize
   Gfx.fillRectangle
     renderer
-    (V2 (fromIntegral fx0) (fromIntegral fy0))
-    (V2 (fromIntegral fx1) (fromIntegral fy1))
+    (V2 (num fx0) (num fy0))
+    (V2 (num fx1) (num fy1))
     (colorPixel color)
 
 drawShape :: SDL.Renderer -> Int -> (Int,  Int) -> (Shape, Color) -> IO ()
 drawShape renderer cellSize (x,y) (shape,color) = case shape of
   --
-  Circle -> return ()
+  Circle -> Gfx.smoothCircle renderer center radius color'
   --
-  FillCircle -> return ()
+  FillCircle -> Gfx.fillCircle renderer center radius color'
   --
-  Triangle -> return ()
+  Triangle -> do
+    let (dax, day) = triDA
+        (dbx, dby) = triDB
+        (dcx, dcy) = triDC
+        ax = x * cellSize + dax
+        ay = y * cellSize + day
+        bx = x * cellSize + dbx
+        by = y * cellSize + dby
+        cx = x * cellSize + dcx
+        cy = y * cellSize + dcy
+        a = num <$> V2 ax ay
+        b = num <$> V2 bx by
+        c = num <$> V2 cx cy
+    Gfx.thickLine renderer a b thickness' color'
+    Gfx.thickLine renderer b c thickness' color'
+    Gfx.thickLine renderer c a thickness' color'
   --
-  FillTriangle -> return ()
+  FillTriangle -> do
+    let (dax, day) = triDA
+        (dbx, dby) = triDB
+        (dcx, dcy) = triDC
+        ax = x * cellSize + dax
+        ay = y * cellSize + day
+        bx = x * cellSize + dbx
+        by = y * cellSize + dby
+        cx = x * cellSize + dcx
+        cy = y * cellSize + dcy
+    Gfx.fillTriangle
+      renderer
+      (V2 (num ax) (num ay))
+      (V2 (num bx) (num by))
+      (V2 (num cx) (num cy))
+      (colorPixel color)
   --
-  Square -> let
-    fx0 = x * cellSize + thickness
-    fx1 = (x + 1) * cellSize - thickness
-    fy0 = y * cellSize + thickness
-    fy1 = (y + 1) * cellSize - thickness
-    in Gfx.rectangle
-        renderer
-        (V2 (fromIntegral fx0) (fromIntegral fy0))
-        (V2 (fromIntegral fx1) (fromIntegral fy1))
-        (colorPixel color)
+  Square -> do
+    let fx0 = x * cellSize + thickness
+        fx1 = (x + 1) * cellSize - thickness
+        fy0 = y * cellSize + thickness
+        fy1 = (y + 1) * cellSize - thickness
+    Gfx.rectangle
+      renderer
+      (V2 (num fx0) (num fy0))
+      (V2 (num fx1) (num fy1))
+      (colorPixel color)
   --
-  FillSquare -> let
-    fx0 = x * cellSize + thickness
-    fx1 = (x + 1) * cellSize - thickness
-    fy0 = y * cellSize + thickness
-    fy1 = (y + 1) * cellSize - thickness
-    in Gfx.fillRectangle
-        renderer
-        (V2 (fromIntegral fx0) (fromIntegral fy0))
-        (V2 (fromIntegral fx1) (fromIntegral fy1))
-        (colorPixel color)
+  FillSquare -> do
+    let fx0 = x * cellSize + thickness
+        fx1 = (x + 1) * cellSize - thickness
+        fy0 = y * cellSize + thickness
+        fy1 = (y + 1) * cellSize - thickness
+    Gfx.fillRectangle
+      renderer
+      (V2 (num fx0) (num fy0))
+      (V2 (num fx1) (num fy1))
+      (colorPixel color)
   --
-  Plus -> return ()
+  Plus -> do
+    let x' = x * cellSize + halfCell'
+        y' = y * cellSize + halfCell'
+        a = num <$> V2 x' (y * cellSize + thickness')
+        b = num <$> V2 x' ((y + 1) * cellSize - thickness')
+        c = num <$> V2 (x * cellSize + thickness') y'
+        d = num <$> V2 ((x + 1) * cellSize - thickness') y'
+    Gfx.thickLine renderer a b thickness' color'
+    Gfx.thickLine renderer c d thickness' color'
   --
-  Minus -> return ()
-  --
-  X -> return ()
+  Dash -> do
+    let y' = y * cellSize + halfCell'
+        a = num <$> V2 (x * cellSize + thickness') y'
+        b = num <$> V2 ((x + 1) * cellSize - thickness') y'
+    Gfx.thickLine renderer a b thickness' color'
+  Bar -> do
+    let x' = x * cellSize + halfCell'
+        a = num <$> V2 x' (y * cellSize + thickness')
+        b = num <$> V2 x' ((y + 1) * cellSize - thickness')
+    Gfx.thickLine renderer a b thickness' color'
+ --
+  Cross -> do
+    let diff = halfCell' - thickness
+        left = x * cellSize + halfCell' - diff
+        right = x * cellSize + halfCell' + diff
+        top = y * cellSize + halfCell' - diff
+        bottom = y * cellSize + halfCell' + diff
+        a = num <$> V2 left top
+        b = num <$> V2 right bottom
+        c = num <$> V2 right top
+        d = num <$> V2 left bottom
+    Gfx.thickLine renderer a b thickness' color'
+    Gfx.thickLine renderer c d thickness' color'
+
   where
+    thickness' :: Num a => a
+    thickness' = num thickness
     thickness :: Int
     thickness = max (cellSize `div` 8) 1
+    triAAngle = pi / 2
+    triBAngle = 2 * pi / 3 + pi / 2
+    triCAngle = 2 * 2 * pi / 3 + pi / 2
+    halfCell = fromIntegral cellSize / 2
+    halfCell' = cellSize `div` 2
+    triCorner angle =
+      ( floor $ (halfCell * cos angle) + halfCell
+      , floor $ negate (halfCell * sin angle) + halfCell + fromIntegral cellSize * 0.1
+      )
+    triDA = triCorner triAAngle
+    triDB = triCorner triBAngle
+    triDC = triCorner triCAngle
+    center = (\n -> floor (num (n * cellSize) + halfCell)) <$> V2 x y
+    radius = floor $ halfCell * 0.8
+    color' = colorPixel color
 
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
 bgr :: (Word8, Word8, Word8) -> Gfx.Color
-bgr (r,g,b) = V4 (fromIntegral r) (fromIntegral g) (fromIntegral b) 0xff
+bgr (r,g,b) = V4 (num r) (num g) (num b) 0xff
 
 colorValue :: Integral a => Color -> (a, a, a)
 colorValue Red         = (0xff, 0x00, 0x00)
