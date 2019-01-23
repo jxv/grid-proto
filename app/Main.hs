@@ -11,7 +11,7 @@ gp = GridProto
   , rows = sides
   , cols = sides
   , cellPixelSize = 64
-  , backgroundColor = Nothing
+  , backgroundColor = Black
   , setupFn = return (0, 0, False)
   , updateFn = update
   , cleanupFn = const (return ())
@@ -34,9 +34,9 @@ cells sides (mx,my,click) = fromList $ do
   let color = Just $
         if (mx,my) == (x,y)
           -- Mouse color
-          then if click then Green else Red
+          then if click then Green1 else Red1
           -- Alternate background colors
-          else if (x + y) `mod` 2 == 0 then DarkBrown else Brown
+          else if (x + y) `mod` 2 == 0 then Brown1 else Brown2
   let shape =
         if (x + y) `mod` 2 == 1
           then Nothing
@@ -46,6 +46,7 @@ cells sides (mx,my,click) = fromList $ do
               then Just (FillCircle, Black)
               else Nothing
   return ((x,y), Cell shape color)
+
 
 quit :: (Int, Int, Bool) -> Bool
 quit (0,0,True) = True
