@@ -37,7 +37,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Types (FromJSONKey, ToJSONKey)
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Function (fix)
 import Data.Foldable (forM_)
@@ -238,7 +238,7 @@ runGridProto GridProto
         state' <- updateFn input state
         let cellMap = cellsFn state'
         SDL.clear renderer
-        drawCellMap renderer cellPixelSize cellMap
+        drawCellMap backgroundColor renderer cellPixelSize cellMap
         SDL.present renderer
         loop (state', input')
   SDL.destroyWindow window
@@ -288,12 +288,12 @@ keyChange event = case event of
     _ -> Nothing
 
 
-drawCellMap :: SDL.Renderer -> Int -> Map (Int, Int) Cell -> IO ()
-drawCellMap renderer cellSize m = forM_ (toList m) $ \((x,y), Cell{shape,fill}) -> do
+drawCellMap :: Color -> SDL.Renderer -> Int -> Map (Int, Int) Cell -> IO ()
+drawCellMap bgColor renderer cellSize m = forM_ (toList m) $ \((x,y), Cell{shape,fill}) -> do
   drawFill renderer cellSize (x,y) fill
   case shape of
     Nothing -> return ()
-    Just shape' -> drawShape renderer cellSize (x,y) shape'
+    Just shape' -> drawShape (fromMaybe bgColor fill) renderer cellSize (x,y) shape'
 
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
 drawFill _ _ _ Nothing = return ()
@@ -308,10 +308,12 @@ drawFill renderer cellSize (x,y) (Just color) = do
     (V2 (num fx1) (num fy1))
     (colorPixel color)
 
-drawShape :: SDL.Renderer -> Int -> (Int,  Int) -> (Shape, Color) -> IO ()
-drawShape renderer cellSize (x,y) (shape,color) = case shape of
+drawShape :: Color -> SDL.Renderer -> Int -> (Int,  Int) -> (Shape, Color) -> IO ()
+drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
   --
-  Circle -> Gfx.smoothCircle renderer center radius color'
+  Circle -> do
+    Gfx.fillCircle renderer center radius color'
+    Gfx.fillCircle renderer center (radius - thickness') (colorPixel bgColor)
   --
   FillCircle -> Gfx.fillCircle renderer center radius color'
   --

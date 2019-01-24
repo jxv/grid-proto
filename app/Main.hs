@@ -10,7 +10,7 @@ gp = GridProto
   { title = "Hello World"
   , rows = sides
   , cols = sides
-  , cellPixelSize = 64
+  , cellPixelSize = 128
   , backgroundColor = Black
   , setupFn = return (0, 0, False)
   , updateFn = update
@@ -41,9 +41,9 @@ cells sides (mx,my,click) = fromList $ do
         if (x + y) `mod` 2 == 1
           then Nothing
           else if y >= 0 && y <= 2
-            then Just (FillCircle,  White)
+            then Just (Circle,  White)
             else if y >= 5 && y <= 7
-              then Just (FillCircle, Black)
+              then Just (Circle, Black)
               else Nothing
   return ((x,y), Cell shape color)
 
