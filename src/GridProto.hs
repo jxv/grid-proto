@@ -1,7 +1,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
 module GridProto
-  ( Map, fromList, lookup, (!), delete, alter, insert, filterWithKey, member, notMember, toList
+  ( Map, fromList, lookupMap, (!), delete, alter, insert, filterWithKey, member, notMember, toList
   , Color(..)
   , Shape(..)
   , Input(..)
@@ -26,25 +28,30 @@ module GridProto
   , br0, br1, br2
   , gy0, gy1, gy2
   , wht, blk
+  , rainbow
   ) where
 
 import Prelude hiding (lookup)
 import GHC.Generics (Generic)
+import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Map (Map, fromList, lookup, (!), delete, alter, insert, filterWithKey, member, notMember, toList)
+import Data.Aeson.Types (FromJSONKey, ToJSONKey)
+import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)
+import Data.Maybe (catMaybes)
+import Data.Monoid (Monoid(..))
 import Data.Function (fix)
 import Data.Foldable (forM_)
+import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
 import Data.Word (Word8)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
-import Data.Semigroup (Semigroup(..))
-import Data.Monoid (Monoid(..))
-import Control.Applicative ((<|>))
+import SDL.Input.Keyboard.Codes
 
+import qualified Data.Map as Map
+import qualified Data.Vector.Storable as VS
 import qualified SDL
 import qualified SDL.Primitive as Gfx
-import qualified Data.Vector.Storable as VS
 
 data Color
   = Red0
@@ -128,16 +135,23 @@ data Key
   | LeftArrow
   | RightArrow
   | Enter
-  | Shift
-  | Ctrl
-  | AltKey
+  | Escape
+  | LeftShift
+  | RightShift
+  | LeftControl
+  | RightControl
+  | LeftAlt
+  | RightAlt
   | Tab
   | Backspace
   | Meta
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Ord, Generic)
 
 instance ToJSON Key
 instance FromJSON Key
+
+instance ToJSONKey Key
+instance FromJSONKey Key
 
 data KeyState
   = Pressed
@@ -150,7 +164,7 @@ instance FromJSON KeyState
 
 data Input = Input
   { mouse :: Mouse
-  , keys :: [(Key, KeyState)]
+  , keys :: Map Key KeyState
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -185,6 +199,9 @@ data GridProto s = GridProto
   , quitFn :: s -> Bool
   }
 
+lookupMap :: Ord k => k -> Map k a -> Maybe a
+lookupMap = Map.lookup
+
 num :: (Integral a, Num b) => a -> b
 num = fromIntegral
 
@@ -205,15 +222,17 @@ runGridProto GridProto
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * cellPixelSize) (num $ cols * cellPixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   initialState <- setupFn
-  ($ initialState) $ fix $ \loop state -> do
+  let initInput = Input Idle Map.empty
+  ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
     let quit = quitFn state
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
     let (V2 mouseX mouseY) = num <$> mousePos
     let mouseCellPos = cellByMousePosition cellPixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
-    let input = makeInput mouseCellPos mouseClick events
-    if quit || elem SDL.QuitEvent (map SDL.eventPayload events)
+    let eventPayloads = map SDL.eventPayload events
+    let input' = makeInput (keys input) mouseCellPos mouseClick eventPayloads
+    if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
         state' <- updateFn input state
@@ -221,16 +240,53 @@ runGridProto GridProto
         SDL.clear renderer
         drawCellMap renderer cellPixelSize cellMap
         SDL.present renderer
-        loop state'
+        loop (state', input')
   SDL.destroyWindow window
   SDL.quit
 
-makeInput :: Maybe (Int, Int) -> Bool -> _a -> Input
-makeInput mpos' mclick _ = Input m []
+makeInput :: Map Key KeyState -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
+makeInput oldKeys mpos' mclick eventPayloads = Input m (nextKeys oldKeys)
   where
     m = case mpos' of
       Nothing -> Idle
       Just mpos -> (if mclick then Click else Hover) mpos
+    keyChanges = Map.fromList . catMaybes $ map keyChange eventPayloads
+    removeReleased = Map.filter (/= Released)
+    pressedToHeld = Map.map (\ks -> if ks == Pressed then Held else ks)
+    nextKeys = Map.union keyChanges . removeReleased . pressedToHeld
+
+keyFromKeyCode :: SDL.Keycode -> Maybe Key
+keyFromKeyCode = \case
+  KeycodeLeft -> Just LeftArrow
+  KeycodeDown -> Just DownArrow
+  KeycodeUp -> Just UpArrow
+  KeycodeRight -> Just RightArrow
+  KeycodeReturn -> Just Enter
+  KeycodeEscape -> Just Escape
+  KeycodeLShift -> Just LeftShift
+  KeycodeRShift -> Just RightShift
+  KeycodeLCtrl -> Just LeftControl
+  KeycodeRCtrl -> Just RightControl
+  KeycodeLAlt -> Just LeftAlt
+  KeycodeRAlt -> Just RightAlt
+  KeycodeTab -> Just Tab
+  KeycodeBackspace -> Just Backspace
+  KeycodeLGUI -> Just Meta
+  KeycodeRGUI -> Just Meta
+  --
+  KeycodeA -> Just $ Char 'a' 
+  --
+  _ -> Nothing
+
+keyChange :: SDL.EventPayload -> Maybe (Key, KeyState)
+keyChange event = case event of
+    SDL.KeyboardEvent SDL.KeyboardEventData{SDL.keyboardEventKeysym = SDL.Keysym{SDL.keysymKeycode = code}, SDL.keyboardEventKeyMotion = motion, SDL.keyboardEventRepeat } -> if not keyboardEventRepeat
+        then case motion of
+          SDL.Released ->  (\k -> (k, Released)) <$> keyFromKeyCode code
+          SDL.Pressed -> (\k -> (k, Pressed)) <$> keyFromKeyCode code
+        else Nothing
+    _ -> Nothing
+
 
 drawCellMap :: SDL.Renderer -> Int -> Map (Int, Int) Cell -> IO ()
 drawCellMap renderer cellSize m = forM_ (toList m) $ \((x,y), Cell{shape,fill}) -> do

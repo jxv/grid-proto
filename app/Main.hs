@@ -23,8 +23,8 @@ gp = GridProto
 
 update :: Input -> (Int, Int, Bool) -> IO (Int, Int, Bool)
 update input state = case mouse input of
-  Hover (mx,my) -> return (mx,my,False)
-  Click (mx,my) -> return (mx,my,True)
+  Hover (mx,my) -> return (mx,my, lookupMap DownArrow (keys input) == Just Released)
+  Click (mx,my) -> return (mx,my, True)
   _ -> return state
 
 cells :: Int -> (Int, Int, Bool) -> Map (Int, Int) Cell
