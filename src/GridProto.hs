@@ -47,10 +47,12 @@ import Data.Word (Word8)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.Input.Keyboard.Codes
+import GridProto.Font
 
 import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
 import qualified SDL
+import qualified SDL.Font as Font
 import qualified SDL.Primitive as Gfx
 
 data Color
@@ -219,8 +221,10 @@ runGridProto GridProto
   }
   = do
   SDL.initialize [SDL.InitVideo, SDL.InitAudio]
+  Font.initialize
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * cellPixelSize) (num $ cols * cellPixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
+  font <- Font.decode fontData ((cellPixelSize * 2) `div` 3)
   initialState <- setupFn
   let initInput = Input Idle Map.empty
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
@@ -242,6 +246,8 @@ runGridProto GridProto
         SDL.present renderer
         loop (state', input')
   SDL.destroyWindow window
+  Font.free font
+  Font.quit
   SDL.quit
 
 makeInput :: Map Key KeyState -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input

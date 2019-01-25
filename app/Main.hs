@@ -23,8 +23,8 @@ gp = GridProto
 
 update :: Input -> (Int, Int, Bool) -> IO (Int, Int, Bool)
 update input state = case mouse input of
-  Hover (mx,my) -> return (mx,my, lookupMap DownArrow (keys input) == Just Released)
-  Click (mx,my) -> return (mx,my, True)
+  Hover (mx,my) -> return (mx,my, lookupMap Escape (keys input) == Just Released)
+  Click (mx,my) -> return (mx,my, mx == 0 && my == 0)
   _ -> return state
 
 cells :: Int -> (Int, Int, Bool) -> Map (Int, Int) Cell
@@ -49,5 +49,5 @@ cells sides (mx,my,click) = fromList $ do
 
 
 quit :: (Int, Int, Bool) -> Bool
-quit (0,0,True) = True
+quit (_,_,True) = True
 quit _ = False

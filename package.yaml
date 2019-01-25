@@ -14,8 +14,10 @@ extra-source-files:
 dependencies:
   - aeson >= 1.4
   - base >= 4.7 && < 5
+  - bytestring
   - sdl2 >= 2.4.0
   - sdl2-gfx
+  - sdl2-ttf
   - containers >= 0.6
   - linear
   - text >= 1.2.3
