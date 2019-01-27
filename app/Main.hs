@@ -11,12 +11,12 @@ classic = Classic
   { title = "Hello World"
   , rows = sides
   , cols = sides
-  , cellPixelSize = 128
+  , tilePixelSize = 128
   , backgroundColor = Black2
   , setupFn = return (0, 0, False)
   , updateFn = update
   , cleanupFn = const (return ())
-  , cellsFn = cells sides
+  , tileMapFn = tileMap sides
   , quitFn = quit
   }
   where
@@ -28,8 +28,8 @@ update input state = case mouse input of
   Click (mx,my) -> return (mx,my, mx == 0 && my == 0)
   _ -> return state
 
-cells :: Int -> (Int, Int, Bool) -> Map (Int, Int) Cell
-cells sides (mx,my,click) = fromList $ do
+tileMap :: Int -> (Int, Int, Bool) -> Map (Int, Int) Tile
+tileMap sides (mx,my,click) = fromList $ do
   y <- [0..(sides - 1)]
   x <- [0..(sides - 1)]
   let color = Just $
@@ -46,7 +46,7 @@ cells sides (mx,my,click) = fromList $ do
             else if y >= 5 && y <= 7
               then Just (Circle, Black1)
               else Nothing
-  return ((x,y), Cell shape color)
+  return ((x,y), Tile shape color)
 
 
 quit :: (Int, Int, Bool) -> Bool

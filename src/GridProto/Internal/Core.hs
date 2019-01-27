@@ -149,21 +149,21 @@ data Input = Input
 instance ToJSON Input
 instance FromJSON Input
 
-data Cell = Cell
+data Tile = Tile
   { shape :: Maybe (Shape, Color)
   , fill :: Maybe Color
   } deriving (Show, Eq, Generic)
 
-instance ToJSON Cell
-instance FromJSON Cell
+instance ToJSON Tile
+instance FromJSON Tile
 
-instance Semigroup Cell where
-  (<>) (Cell aShape aFill) (Cell bShape bFill) = case bFill of
-    Nothing -> Cell (bShape <|> aShape) aFill
-    Just _ -> Cell bShape bFill
+instance Semigroup Tile where
+  (<>) (Tile aShape aFill) (Tile bShape bFill) = case bFill of
+    Nothing -> Tile (bShape <|> aShape) aFill
+    Just _ -> Tile bShape bFill
 
-instance Monoid Cell where
-  mempty = Cell Nothing Nothing
+instance Monoid Tile where
+  mempty = Tile Nothing Nothing
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
 lookupMap = Map.lookup
@@ -215,20 +215,20 @@ keyChange event = case event of
     _ -> Nothing
 
 
-drawCellMap :: Color -> SDL.Renderer -> Int -> Map (Int, Int) Cell -> IO ()
-drawCellMap bgColor renderer cellSize m = forM_ (toList m) $ \((x,y), Cell{shape,fill}) -> do
-  drawFill renderer cellSize (x,y) fill
+drawTileMap :: Color -> SDL.Renderer -> Int -> Map (Int, Int) Tile -> IO ()
+drawTileMap bgColor renderer tileSize m = forM_ (toList m) $ \((x,y), Tile{shape,fill}) -> do
+  drawFill renderer tileSize (x,y) fill
   case shape of
     Nothing -> return ()
-    Just shape' -> drawShape (fromMaybe bgColor fill) renderer cellSize (x,y) shape'
+    Just shape' -> drawShape (fromMaybe bgColor fill) renderer tileSize (x,y) shape'
 
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
 drawFill _ _ _ Nothing = return ()
-drawFill renderer cellSize (x,y) (Just color) = do
-  let fx0 = x * cellSize
-      fx1 = (x + 1) * cellSize
-      fy0 = y * cellSize
-      fy1 = (y + 1) * cellSize
+drawFill renderer tileSize (x,y) (Just color) = do
+  let fx0 = x * tileSize
+      fx1 = (x + 1) * tileSize
+      fy0 = y * tileSize
+      fy1 = (y + 1) * tileSize
   Gfx.fillRectangle
     renderer
     (V2 (num fx0) (num fy0))
@@ -236,7 +236,7 @@ drawFill renderer cellSize (x,y) (Just color) = do
     (colorPixel color)
 
 drawShape :: Color -> SDL.Renderer -> Int -> (Int,  Int) -> (Shape, Color) -> IO ()
-drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
+drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
   --
   Circle -> do
     Gfx.fillCircle renderer center radius color'
@@ -248,12 +248,12 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
     let (dax, day) = triDA
         (dbx, dby) = triDB
         (dcx, dcy) = triDC
-        ax = x * cellSize + dax
-        ay = y * cellSize + day
-        bx = x * cellSize + dbx
-        by = y * cellSize + dby
-        cx = x * cellSize + dcx
-        cy = y * cellSize + dcy
+        ax = x * tileSize + dax
+        ay = y * tileSize + day
+        bx = x * tileSize + dbx
+        by = y * tileSize + dby
+        cx = x * tileSize + dcx
+        cy = y * tileSize + dcy
         a = num <$> V2 ax ay
         b = num <$> V2 bx by
         c = num <$> V2 cx cy
@@ -265,12 +265,12 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
     let (dax, day) = triDA
         (dbx, dby) = triDB
         (dcx, dcy) = triDC
-        ax = x * cellSize + dax
-        ay = y * cellSize + day
-        bx = x * cellSize + dbx
-        by = y * cellSize + dby
-        cx = x * cellSize + dcx
-        cy = y * cellSize + dcy
+        ax = x * tileSize + dax
+        ay = y * tileSize + day
+        bx = x * tileSize + dbx
+        by = y * tileSize + dby
+        cx = x * tileSize + dcx
+        cy = y * tileSize + dcy
     Gfx.fillTriangle
       renderer
       (V2 (num ax) (num ay))
@@ -279,10 +279,10 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
       (colorPixel color)
   --
   Square -> do
-    let fx0 = x * cellSize + thickness
-        fx1 = (x + 1) * cellSize - thickness
-        fy0 = y * cellSize + thickness
-        fy1 = (y + 1) * cellSize - thickness
+    let fx0 = x * tileSize + thickness
+        fx1 = (x + 1) * tileSize - thickness
+        fy0 = y * tileSize + thickness
+        fy1 = (y + 1) * tileSize - thickness
     Gfx.rectangle
       renderer
       (V2 (num fx0) (num fy0))
@@ -290,10 +290,10 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
       (colorPixel color)
   --
   FillSquare -> do
-    let fx0 = x * cellSize + thickness
-        fx1 = (x + 1) * cellSize - thickness
-        fy0 = y * cellSize + thickness
-        fy1 = (y + 1) * cellSize - thickness
+    let fx0 = x * tileSize + thickness
+        fx1 = (x + 1) * tileSize - thickness
+        fy0 = y * tileSize + thickness
+        fy1 = (y + 1) * tileSize - thickness
     Gfx.fillRectangle
       renderer
       (V2 (num fx0) (num fy0))
@@ -301,32 +301,32 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
       (colorPixel color)
   --
   Plus -> do
-    let x' = x * cellSize + halfCell'
-        y' = y * cellSize + halfCell'
-        a = num <$> V2 x' (y * cellSize + thickness')
-        b = num <$> V2 x' ((y + 1) * cellSize - thickness')
-        c = num <$> V2 (x * cellSize + thickness') y'
-        d = num <$> V2 ((x + 1) * cellSize - thickness') y'
+    let x' = x * tileSize + halfTile'
+        y' = y * tileSize + halfTile'
+        a = num <$> V2 x' (y * tileSize + thickness')
+        b = num <$> V2 x' ((y + 1) * tileSize - thickness')
+        c = num <$> V2 (x * tileSize + thickness') y'
+        d = num <$> V2 ((x + 1) * tileSize - thickness') y'
     Gfx.thickLine renderer a b thickness' color'
     Gfx.thickLine renderer c d thickness' color'
   --
   Dash -> do
-    let y' = y * cellSize + halfCell'
-        a = num <$> V2 (x * cellSize + thickness') y'
-        b = num <$> V2 ((x + 1) * cellSize - thickness') y'
+    let y' = y * tileSize + halfTile'
+        a = num <$> V2 (x * tileSize + thickness') y'
+        b = num <$> V2 ((x + 1) * tileSize - thickness') y'
     Gfx.thickLine renderer a b thickness' color'
   Bar -> do
-    let x' = x * cellSize + halfCell'
-        a = num <$> V2 x' (y * cellSize + thickness')
-        b = num <$> V2 x' ((y + 1) * cellSize - thickness')
+    let x' = x * tileSize + halfTile'
+        a = num <$> V2 x' (y * tileSize + thickness')
+        b = num <$> V2 x' ((y + 1) * tileSize - thickness')
     Gfx.thickLine renderer a b thickness' color'
  --
   Cross -> do
-    let diff = halfCell' - thickness
-        left = x * cellSize + halfCell' - diff
-        right = x * cellSize + halfCell' + diff
-        top = y * cellSize + halfCell' - diff
-        bottom = y * cellSize + halfCell' + diff
+    let diff = halfTile' - thickness
+        left = x * tileSize + halfTile' - diff
+        right = x * tileSize + halfTile' + diff
+        top = y * tileSize + halfTile' - diff
+        bottom = y * tileSize + halfTile' + diff
         a = num <$> V2 left top
         b = num <$> V2 right bottom
         c = num <$> V2 right top
@@ -338,21 +338,21 @@ drawShape bgColor renderer cellSize (x,y) (shape,color) = case shape of
     thickness' :: Num a => a
     thickness' = num thickness
     thickness :: Int
-    thickness = max (cellSize `div` 8) 1
+    thickness = max (tileSize `div` 8) 1
     triAAngle = pi / 2
     triBAngle = 2 * pi / 3 + pi / 2
     triCAngle = 2 * 2 * pi / 3 + pi / 2
-    halfCell = fromIntegral cellSize / 2
-    halfCell' = cellSize `div` 2
+    halfTile = fromIntegral tileSize / 2
+    halfTile' = tileSize `div` 2
     triCorner angle =
-      ( floor $ (halfCell * cos angle) + halfCell
-      , floor $ negate (halfCell * sin angle) + halfCell + fromIntegral cellSize * 0.1
+      ( floor $ (halfTile * cos angle) + halfTile
+      , floor $ negate (halfTile * sin angle) + halfTile + fromIntegral tileSize * 0.1
       )
     triDA = triCorner triAAngle
     triDB = triCorner triBAngle
     triDC = triCorner triCAngle
-    center = (\n -> floor (num (n * cellSize) + halfCell)) <$> V2 x y
-    radius = floor $ halfCell * 0.8
+    center = (\n -> floor (num (n * tileSize) + halfTile)) <$> V2 x y
+    radius = floor $ halfTile * 0.8
     color' = colorPixel color
 
 colorPixel :: Color -> Gfx.Color
@@ -450,7 +450,7 @@ rainbow = [rd1, or1, yw1, ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1, rs1]
 symbolList :: [Char]
 symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
 
-cellByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
-cellByMousePosition cellSize (mx,my) (r,c)
-  | mx < 0 || my < 0 || mx >= cellSize * c || my >= cellSize * r = Nothing
-  | otherwise = Just (mx `div` cellSize, my `div` cellSize)
+tileByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
+tileByMousePosition tileSize (mx,my) (r,c)
+  | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
+  | otherwise = Just (mx `div` tileSize, my `div` tileSize)

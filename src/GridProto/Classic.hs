@@ -36,12 +36,12 @@ data Classic s = Classic
   { title :: String
   , rows :: Int
   , cols :: Int
-  , cellPixelSize :: Int
+  , tilePixelSize :: Int
   , backgroundColor :: Color
   , setupFn :: IO s
   , updateFn :: Input -> s -> IO s
   , cleanupFn :: s -> IO ()
-  , cellsFn :: s -> Map (Int, Int) Cell
+  , tileMapFn :: s -> Map (Int, Int) Tile
   , quitFn :: s -> Bool
   }
 
@@ -50,19 +50,19 @@ runClassic Classic
   { title
   , rows
   , cols
-  , cellPixelSize
+  , tilePixelSize
   , backgroundColor
   , setupFn
   , updateFn
-  , cellsFn
+  , tileMapFn
   , quitFn
   }
   = do
   SDL.initialize [SDL.InitVideo, SDL.InitAudio]
   Font.initialize
-  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * cellPixelSize) (num $ cols * cellPixelSize) }
+  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * tilePixelSize) (num $ cols * tilePixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  font <- Font.decode fontData ((cellPixelSize * 2) `div` 3)
+  font <- Font.decode fontData ((tilePixelSize * 2) `div` 3)
   initialState <- setupFn
   let initInput = Input Idle Map.empty
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
@@ -70,17 +70,17 @@ runClassic Classic
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
     let (V2 mouseX mouseY) = num <$> mousePos
-    let mouseCellPos = cellByMousePosition cellPixelSize (mouseX, mouseY) (rows, cols)
+    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
-    let input' = makeInput (keys input) mouseCellPos mouseClick eventPayloads
+    let input' = makeInput (keys input) mouseTilePos mouseClick eventPayloads
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
         state' <- updateFn input state
-        let cellMap = cellsFn state'
+        let tileMap = tileMapFn state'
         SDL.clear renderer
-        drawCellMap backgroundColor renderer cellPixelSize cellMap
+        drawTileMap backgroundColor renderer tilePixelSize tileMap
         SDL.present renderer
         loop (state', input')
   SDL.destroyWindow window
