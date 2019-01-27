@@ -21,13 +21,14 @@ module GridProto
   , sp0, sp1, sp2
   , cn0, cn1, cn2
   , az0, az1, az2
-  , bl0, bl1, bl2
+  , bu0, bu1, bu2
   , vt0, vt1, vt2
   , mg0, mg1, mg2
   , rs0, rs1, rs2
   , br0, br1, br2
   , gy0, gy1, gy2
-  , wht, blk
+  , wh0, wh1, wh2
+  , bk0, bk1, bk2
   , rainbow
   ) where
 
@@ -98,8 +99,12 @@ data Color
   | Gray0
   | Gray1
   | Gray2
-  | White
-  | Black
+  | White0
+  | White1
+  | White2
+  | Black0
+  | Black1
+  | Black2
   deriving (Enum, Eq, Bounded, Show, Generic)
 
 instance ToJSON Color
@@ -483,8 +488,12 @@ colorValue Brown2      = (0x55, 0x22, 0x00)
 colorValue Gray0       = (0xaa, 0xaa, 0xaa)
 colorValue Gray1       = (0x77, 0x77, 0x77)
 colorValue Gray2       = (0x44, 0x44, 0x44)
-colorValue White       = (0xff, 0xff, 0xff)
-colorValue Black       = (0x00, 0x00, 0x00)
+colorValue White0      = (0xff, 0xff, 0xff)
+colorValue White1      = (0xee, 0xee, 0xee)
+colorValue White2      = (0xdd, 0xdd, 0xdd)
+colorValue Black0      = (0x22, 0x22, 0x22)
+colorValue Black1      = (0x11, 0x11, 0x11)
+colorValue Black2      = (0x00, 0x00, 0x00)
 
 rd0, rd1, rd2,
   or0, or1, or2,
@@ -494,13 +503,14 @@ rd0, rd1, rd2,
   sp0, sp1, sp2,
   cn0, cn1, cn2,
   az0, az1, az2,
-  bl0, bl1, bl2,
+  bu0, bu1, bu2,
   vt0, vt1, vt2,
   mg0, mg1, mg2,
   rs0, rs1, rs2,
   br0, br1, br2,
   gy0, gy1, gy2,
-  wht, blk :: Color
+  wh0, wh1, wh2,
+  bk0, bk1, bk2 :: Color
 (rd0, rd1, rd2) = (Red0, Red1, Red2)
 (or0, or1, or2) = (Orange0, Orange1, Orange2)
 (yw0, yw1, yw2) = (Yellow0, Yellow1, Yellow2)
@@ -509,16 +519,17 @@ rd0, rd1, rd2,
 (sp0, sp1, sp2) = (Spring0, Spring1, Spring2)
 (cn0, cn1, cn2) = (Cyan0, Cyan1, Cyan2)
 (az0, az1, az2) = (Azure0, Azure1, Azure2)
-(bl0, bl1, bl2) = (Blue0, Blue1, Blue2)
+(bu0, bu1, bu2) = (Blue0, Blue1, Blue2)
 (vt0, vt1, vt2) = (Violet0, Violet1, Violet2)
 (mg0, mg1, mg2) = (Magenta0, Magenta1, Magenta2)
 (rs0, rs1, rs2) = (Rose0, Rose1, Rose2)
 (br0, br1, br2) = (Brown0, Brown1, Brown2)
 (gy0, gy1, gy2) = (Gray0, Gray1, Gray2)
-(wht, blk)      = (White, Black)
+(wh0, wh1, wh2) = (White0, White1, White2)
+(bk0, bk1, bk2) = (Black0, Black1, Black2)
 
 rainbow :: [Color]
-rainbow = [rd1, or1, yw1, gn1, sp1, cn1, az1, bl1, vt1, mg1, rs1]
+rainbow = [rd1, or1, yw1, ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1, rs1]
 
 -- symbolList :: [Char]
 -- symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
