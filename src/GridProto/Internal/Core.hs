@@ -2,35 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
-module GridProto
-  ( Map, fromList, lookupMap, (!), delete, alter, insert, filterWithKey, member, notMember, toList
-  , Color(..)
-  , Shape(..)
-  , Input(..)
-  , Mouse(..)
-  , Key(..)
-  , KeyState(..)
-  , Cell(..)
-  , GridProto(..)
-  , runGridProto
-  , rd0, rd1, rd2
-  , or0, or1, or2
-  , yw0, yw1, yw2
-  , ch0, ch1, ch2
-  , gn0, gn1, gn2
-  , sp0, sp1, sp2
-  , cn0, cn1, cn2
-  , az0, az1, az2
-  , bu0, bu1, bu2
-  , vt0, vt1, vt2
-  , mg0, mg1, mg2
-  , rs0, rs1, rs2
-  , br0, br1, br2
-  , gy0, gy1, gy2
-  , wh0, wh1, wh2
-  , bk0, bk1, bk2
-  , rainbow
-  ) where
+module GridProto.Internal.Core where
 
 import Prelude hiding (lookup)
 import GHC.Generics (Generic)
@@ -48,7 +20,7 @@ import Data.Word (Word8)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.Input.Keyboard.Codes
-import GridProto.Font
+import GridProto.Internal.Font
 
 import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
@@ -193,67 +165,11 @@ instance Semigroup Cell where
 instance Monoid Cell where
   mempty = Cell Nothing Nothing
 
-data GridProto s = GridProto
-  { title :: String
-  , rows :: Int
-  , cols :: Int
-  , cellPixelSize :: Int
-  , backgroundColor :: Color
-  , setupFn :: IO s
-  , updateFn :: Input -> s -> IO s
-  , cleanupFn :: s -> IO ()
-  , cellsFn :: s -> Map (Int, Int) Cell
-  , quitFn :: s -> Bool
-  }
-
 lookupMap :: Ord k => k -> Map k a -> Maybe a
 lookupMap = Map.lookup
 
 num :: (Integral a, Num b) => a -> b
 num = fromIntegral
-
-runGridProto :: GridProto s -> IO ()
-runGridProto GridProto
-  { title
-  , rows
-  , cols
-  , cellPixelSize
-  , backgroundColor
-  , setupFn
-  , updateFn
-  , cellsFn
-  , quitFn
-  }
-  = do
-  SDL.initialize [SDL.InitVideo, SDL.InitAudio]
-  Font.initialize
-  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * cellPixelSize) (num $ cols * cellPixelSize) }
-  renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  font <- Font.decode fontData ((cellPixelSize * 2) `div` 3)
-  initialState <- setupFn
-  let initInput = Input Idle Map.empty
-  ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
-    let quit = quitFn state
-    events <- SDL.pollEvents
-    (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
-    let (V2 mouseX mouseY) = num <$> mousePos
-    let mouseCellPos = cellByMousePosition cellPixelSize (mouseX, mouseY) (rows, cols)
-    mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
-    let eventPayloads = map SDL.eventPayload events
-    let input' = makeInput (keys input) mouseCellPos mouseClick eventPayloads
-    if quit || elem SDL.QuitEvent eventPayloads
-      then return ()
-      else do
-        state' <- updateFn input state
-        let cellMap = cellsFn state'
-        SDL.clear renderer
-        drawCellMap backgroundColor renderer cellPixelSize cellMap
-        SDL.present renderer
-        loop (state', input')
-  SDL.destroyWindow window
-  Font.free font
-  Font.quit
-  SDL.quit
 
 makeInput :: Map Key KeyState -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
 makeInput oldKeys mpos' mclick eventPayloads = Input m (nextKeys oldKeys)
@@ -531,8 +447,8 @@ rd0, rd1, rd2,
 rainbow :: [Color]
 rainbow = [rd1, or1, yw1, ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1, rs1]
 
--- symbolList :: [Char]
--- symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
+symbolList :: [Char]
+symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
 
 cellByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
 cellByMousePosition cellSize (mx,my) (r,c)

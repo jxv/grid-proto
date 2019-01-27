@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module GridProto.Font where
+module GridProto.Internal.Font where
 
 import Data.ByteString (ByteString)
 

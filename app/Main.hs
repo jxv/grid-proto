@@ -1,12 +1,13 @@
 module Main where
 
-import GridProto
+import GridProto.Classic
+import GridProto.Core
 
 main :: IO ()
-main = runGridProto gp
+main = runClassic classic
 
-gp :: GridProto (Int, Int, Bool)
-gp = GridProto
+classic :: Classic (Int, Int, Bool)
+classic = Classic
   { title = "Hello World"
   , rows = sides
   , cols = sides

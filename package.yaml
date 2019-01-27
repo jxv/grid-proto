@@ -24,7 +24,9 @@ dependencies:
   - vector >= 0.12
 
 library:
-  exposed-modules: GridProto
+  exposed-modules:
+    - GridProto.Core
+    - GridProto.Classic
   source-dirs: src
 
 executables:
