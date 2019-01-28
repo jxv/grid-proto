@@ -2,11 +2,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections #-}
 module GridProto.Internal.Core where
 
 import Prelude hiding (lookup)
 import GHC.Generics (Generic)
 import Control.Applicative ((<|>))
+import Data.Traversable (forM)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Types (FromJSONKey, ToJSONKey)
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)
@@ -77,7 +79,7 @@ data Color
   | Black0
   | Black1
   | Black2
-  deriving (Enum, Eq, Bounded, Show, Generic)
+  deriving (Enum, Eq, Bounded, Ord, Show, Generic)
 
 instance ToJSON Color
 instance FromJSON Color
@@ -150,7 +152,8 @@ instance ToJSON Input
 instance FromJSON Input
 
 data Tile = Tile
-  { shape :: Maybe (Shape, Color)
+  { symbol :: Maybe (Char, Color)
+  , shape :: Maybe (Shape, Color)
   , fill :: Maybe Color
   } deriving (Show, Eq, Generic)
 
@@ -158,12 +161,12 @@ instance ToJSON Tile
 instance FromJSON Tile
 
 instance Semigroup Tile where
-  (<>) (Tile aShape aFill) (Tile bShape bFill) = case bFill of
-    Nothing -> Tile (bShape <|> aShape) aFill
-    Just _ -> Tile bShape bFill
+  (<>) (Tile aSymbol aShape aFill) (Tile bSymbol bShape bFill) = case bFill of
+    Nothing -> Tile (bSymbol <|> aSymbol) (bShape <|> aShape) aFill
+    Just _ -> Tile bSymbol bShape bFill
 
 instance Monoid Tile where
-  mempty = Tile Nothing Nothing
+  mempty = Tile Nothing Nothing Nothing
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
 lookupMap = Map.lookup
@@ -215,12 +218,15 @@ keyChange event = case event of
     _ -> Nothing
 
 
-drawTileMap :: Color -> SDL.Renderer -> Int -> Map (Int, Int) Tile -> IO ()
-drawTileMap bgColor renderer tileSize m = forM_ (toList m) $ \((x,y), Tile{shape,fill}) -> do
+drawTileMap :: Color -> SDL.Renderer -> Int -> (Color -> Map Char (SDL.Texture, Int, Int)) -> Map (Int, Int) Tile -> IO ()
+drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Tile{symbol,shape,fill}) -> do
   drawFill renderer tileSize (x,y) fill
   case shape of
     Nothing -> return ()
     Just shape' -> drawShape (fromMaybe bgColor fill) renderer tileSize (x,y) shape'
+  case symbol of
+    Nothing -> return ()
+    Just (symbol', color) -> drawSymbol renderer fontMap symbol' color tileSize (x,y)
 
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
 drawFill _ _ _ Nothing = return ()
@@ -355,6 +361,25 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
     radius = floor $ halfTile * 0.8
     color' = colorPixel color
 
+drawSymbol :: SDL.Renderer -> (Color -> Map Char (SDL.Texture, Int, Int)) -> Char -> Color -> Int -> (Int, Int) -> IO ()
+drawSymbol renderer fontMap ch color tileSize (x,y) = case Map.lookup ch (fontMap color) of
+  Nothing -> return ()
+  Just (tex, offsetX, offsetY) -> do
+    SDL.TextureInfo{SDL.textureWidth=width,SDL.textureHeight=height} <- SDL.queryTexture tex
+    let wh = V2 width height
+    let wh2 = V2 (div width 2) (div height 2)
+    let offset = fromIntegral <$> V2 offsetX offsetY
+    let xy' = xy + center - wh2 - offset
+    SDL.copy
+      renderer
+      tex
+      Nothing
+      (Just $ SDL.Rectangle (SDL.P xy') wh)
+  where
+    xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
+    center = fromIntegral <$> V2 (tileSize `div` 2) (2 * (tileSize `div` 3))
+    
+
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
@@ -447,10 +472,46 @@ rd0, rd1, rd2,
 rainbow :: [Color]
 rainbow = [rd1, or1, yw1, ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1, rs1]
 
-symbolList :: [Char]
-symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
-
 tileByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
 tileByMousePosition tileSize (mx,my) (r,c)
   | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
   | otherwise = Just (mx `div` tileSize, my `div` tileSize)
+
+loadFonts :: SDL.Renderer -> Int -> IO (Color -> Map Char (SDL.Texture, Int, Int))
+loadFonts renderer tileSize = do
+  font <- Font.decode fontData ((tileSize * 2) `div` 3)
+  offsets <- symbolOffsets font
+  symbols <- fmap fromList $ mapM (\color -> (color,) <$> makeSymbols font offsets color) [minBound..maxBound]
+  pure $ \color -> symbols ! color
+  where
+    makeSymbol :: Font.Font -> Char -> Color -> IO SDL.Texture
+    makeSymbol font ch color = toTexture renderer =<< (Font.solidGlyph font (colorPixel color) ch)
+    --
+    colors :: [Color]
+    colors = [minBound..maxBound]
+    --
+    symbolList :: [Char]
+    symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
+    --
+    symbolOffsets :: Font.Font -> IO (Map Char (Int, Int))
+    symbolOffsets font = fmap fromList $ forM symbolList $ \ch -> (ch,) <$> symbolOffset font ch
+    --
+    symbolOffset :: Font.Font -> Char -> IO (Int, Int)
+    symbolOffset font ch = do
+      metrics' <- Font.glyphMetrics font ch
+      case metrics' of
+        Nothing -> return (0,0)
+        Just (_,minY,_,maxY,_) -> do
+          return (0, (maxY - minY) `div` 2)
+    --
+    makeSymbols :: Font.Font -> Map Char (Int, Int) -> Color -> IO (Map Char (SDL.Texture, Int, Int))
+    makeSymbols font offsetMap color = fmap fromList $ forM symbolList $ \ch -> do
+      symbol <- makeSymbol font ch color
+      let (x,y) = offsetMap ! ch
+      return (ch, (symbol, x, y))
+
+toTexture :: SDL.Renderer -> SDL.Surface -> IO SDL.Texture
+toTexture renderer surface = do
+  texture <- SDL.createTextureFromSurface renderer surface
+  SDL.freeSurface surface
+  return texture

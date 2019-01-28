@@ -46,7 +46,7 @@ tileMap sides (mx,my,click) = fromList $ do
             else if y >= 5 && y <= 7
               then Just (Circle, Black1)
               else Nothing
-  return ((x,y), Tile shape color)
+  return ((x,y), Tile (Just ('`', Green1)) shape color)
 
 
 quit :: (Int, Int, Bool) -> Bool
