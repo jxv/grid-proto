@@ -100,11 +100,10 @@ data Shape
 instance ToJSON Shape
 instance FromJSON Shape
 
-data Mouse
-  = Hover (Int, Int)
-  | Click (Int, Int)
-  | Idle
-  deriving (Show, Eq, Generic)
+data Mouse = Mouse
+  { mousePosition :: (Int, Int)
+  , mouseButton :: KeyState
+  } deriving (Show, Eq, Generic)
 
 instance ToJSON Mouse
 instance FromJSON Mouse
@@ -138,14 +137,21 @@ data KeyState
   = Pressed
   | Held
   | Released
+  | Untouched
   deriving (Enum, Eq, Bounded, Show, Generic)
 
 instance ToJSON KeyState
 instance FromJSON KeyState
 
+newtype Keys = Keys { unKeys :: Map Key KeyState }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Keys
+instance FromJSON Keys
+
 data Input = Input
   { mouse :: Mouse
-  , keys :: Map Key KeyState
+  , keys :: Keys
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -174,12 +180,20 @@ lookupMap = Map.lookup
 num :: (Integral a, Num b) => a -> b
 num = fromIntegral
 
-makeInput :: Map Key KeyState -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput oldKeys mpos' mclick eventPayloads = Input m (nextKeys oldKeys)
+lookupKey :: Keys -> Key -> KeyState
+lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
+
+makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
+makeInput Input{mouse,keys} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys)
   where
-    m = case mpos' of
-      Nothing -> Idle
-      Just mpos -> (if mclick then Click else Hover) mpos
+    mpos = fromMaybe (mousePosition mouse) mpos'
+    mbutton
+      | mclick && mouseButton mouse == Untouched = Pressed
+      | mclick && mouseButton mouse == Pressed = Held
+      | mclick && mouseButton mouse == Held = Held
+      | not mclick && mouseButton mouse == Held = Released
+      | otherwise = Untouched
+    m = Mouse mpos mbutton
     keyChanges = Map.fromList . catMaybes $ map keyChange eventPayloads
     removeReleased = Map.filter (/= Released)
     pressedToHeld = Map.map (\ks -> if ks == Pressed then Held else ks)
@@ -377,7 +391,7 @@ drawSymbol renderer fontMap ch color tileSize (x,y) = case Map.lookup ch (fontMa
       (Just $ SDL.Rectangle (SDL.P xy') wh)
   where
     xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
-    center = fromIntegral <$> V2 (tileSize `div` 2) (2 * (tileSize `div` 3))
+    center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
     
 
 colorPixel :: Color -> Gfx.Color
@@ -479,7 +493,7 @@ tileByMousePosition tileSize (mx,my) (r,c)
 
 loadFonts :: SDL.Renderer -> Int -> IO (Color -> Map Char (SDL.Texture, Int, Int))
 loadFonts renderer tileSize = do
-  font <- Font.decode fontData ((tileSize * 2) `div` 3)
+  font <- Font.decode fontData (tileSize `div` 2)
   offsets <- symbolOffsets font
   symbols <- fmap fromList $ mapM (\color -> (color,) <$> makeSymbols font offsets color) [minBound..maxBound]
   pure $ \color -> symbols ! color
@@ -501,8 +515,7 @@ loadFonts renderer tileSize = do
       metrics' <- Font.glyphMetrics font ch
       case metrics' of
         Nothing -> return (0,0)
-        Just (_,minY,_,maxY,_) -> do
-          return (0, (maxY - minY) `div` 2)
+        Just (_,_,_,_,_) -> return (0,0)
     --
     makeSymbols :: Font.Font -> Map Char (Int, Int) -> Color -> IO (Map Char (SDL.Texture, Int, Int))
     makeSymbols font offsetMap color = fmap fromList $ forM symbolList $ \ch -> do

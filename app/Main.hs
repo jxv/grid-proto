@@ -23,10 +23,9 @@ classic = Classic
     sides = 8
 
 update :: Input -> (Int, Int, Bool) -> IO (Int, Int, Bool)
-update input state = case mouse input of
-  Hover (mx,my) -> return (mx,my, lookupMap Escape (keys input) == Just Released)
-  Click (mx,my) -> return (mx,my, mx == 0 && my == 0)
-  _ -> return state
+update Input{mouse=Mouse{mousePosition=(mx,my),mouseButton=mouseButton},keys=keys} _
+  | mouseButton == Pressed = return (mx,my, mx == 0 && my == my)
+  | otherwise = return (mx, my, lookupKey keys Escape == Released)
 
 tileMap :: Int -> (Int, Int, Bool) -> Map (Int, Int) Tile
 tileMap sides (mx,my,click) = fromList $ do
@@ -38,15 +37,15 @@ tileMap sides (mx,my,click) = fromList $ do
           then if click then Green1 else Red1
           -- Alternate background colors
           else if (x + y) `mod` 2 == 0 then Brown1 else Brown2
-  let shape =
+  let (symbol, shape) =
         if (x + y) `mod` 2 == 1
-          then Nothing
+          then (Nothing, Nothing)
           else if y >= 0 && y <= 2
-            then Just (Circle,  White1)
+            then (Just ('w', White1), Just (Circle,  White1))
             else if y >= 5 && y <= 7
-              then Just (Circle, Black1)
-              else Nothing
-  return ((x,y), Tile (Just ('`', Green1)) shape color)
+              then (Just ('!', Black1), Just (Circle, Black1))
+              else (Nothing, Nothing)
+  return ((x,y), Tile symbol shape color)
 
 
 quit :: (Int, Int, Bool) -> Bool

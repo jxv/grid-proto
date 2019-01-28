@@ -64,7 +64,7 @@ runClassic Classic
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   fontMap <- loadFonts renderer tilePixelSize
   initialState <- setupFn
-  let initInput = Input Idle Map.empty
+  let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty)
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
     let quit = quitFn state
     events <- SDL.pollEvents
@@ -73,7 +73,7 @@ runClassic Classic
     let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
-    let input' = makeInput (keys input) mouseTilePos mouseClick eventPayloads
+    let input' = makeInput input mouseTilePos mouseClick eventPayloads
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
