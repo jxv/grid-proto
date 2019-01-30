@@ -18,6 +18,7 @@ dependencies:
   - sdl2 >= 2.4.0
   - sdl2-gfx
   - sdl2-ttf
+  - sdl2-fps
   - containers >= 0.6
   - linear
   - text >= 1.2.3

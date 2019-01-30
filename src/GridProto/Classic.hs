@@ -27,6 +27,7 @@ import Data.Text (pack)
 import Data.Word (Word8)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
+import SDL.FPS
 import SDL.Input.Keyboard.Codes
 
 import GridProto.Internal.Core
@@ -66,6 +67,7 @@ runClassic Classic
   initialState <- setupFn
   let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty)
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
+    ticks <- startFrame
     let quit = quitFn state
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
@@ -82,6 +84,7 @@ runClassic Classic
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize fontMap tileMap
         SDL.present renderer
+        endFrame 60 ticks
         loop (state', input')
   SDL.destroyWindow window
   Font.quit
