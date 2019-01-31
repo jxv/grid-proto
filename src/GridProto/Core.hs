@@ -9,6 +9,8 @@ module GridProto.Core
   , Keys(..)
   , Tile(..)
   , lookupKey
+  , placeTilesAt
+  , mergeTiles
   , rd0, rd1, rd2
   , or0, or1, or2
   , yw0, yw1, yw2

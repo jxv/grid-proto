@@ -528,3 +528,19 @@ toTexture renderer surface = do
   texture <- SDL.createTextureFromSurface renderer surface
   SDL.freeSurface surface
   return texture
+
+placeTile :: (Int, Int) -> Tile -> Map (Int, Int) Tile -> Map (Int, Int) Tile
+placeTile xy tile m = Map.insertWith (<>) xy tile m
+
+placeTilesAt
+  :: Map (Int, Int) Tile -- | Base tiles
+  -> (Int, Int)          -- | Offset
+  -> Map (Int, Int) Tile -- | Tiles to be placed
+  -> Map (Int, Int) Tile
+placeTilesAt old (x,y) new = foldr (\((x',y'), tile) m' -> placeTile (x+x', y+y') tile m') old (Map.toList new)
+
+mergeTiles
+  :: Map (Int, Int) Tile -- | Base tiles
+  -> Map (Int, Int) Tile -- | Tiles to be placed
+  -> Map (Int, Int) Tile
+mergeTiles old new = placeTilesAt old (0,0) new
