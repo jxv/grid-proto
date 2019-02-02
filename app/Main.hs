@@ -11,7 +11,7 @@ classic = Classic
   { title = "Hello World"
   , rows = sides
   , cols = sides
-  , tilePixelSize = 48
+  , tilePixelSize = 64
   , backgroundColor = Black2
   , setupFn = return (0, 0, False)
   , updateFn = update
@@ -43,7 +43,7 @@ tileMap sides (mx,my,click) = fromList $ do
           else if y >= 0 && y <= 2
             then (Just ('w', White1), Just (Circle,  White1))
             else if y >= 5 && y <= 7
-              then (Just ('!', Black1), Just (Circle, Black1))
+              then (Just ('b', Black1), Just (Circle, Black1))
               else (Nothing, Nothing)
   return ((x,y), Tile symbol shape color)
 
