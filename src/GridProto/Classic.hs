@@ -25,6 +25,7 @@ import Data.Foldable (forM_)
 import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
 import Data.Word (Word8)
+import Data.StateVar (($=))
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.FPS
@@ -81,6 +82,7 @@ runClassic Classic
       else do
         state' <- updateFn input state
         let tileMap = tileMapFn state'
+        SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize fontMap tileMap
         SDL.present renderer

@@ -28,6 +28,8 @@ module GridProto.Core
   , wh0, wh1, wh2
   , bk0, bk1, bk2
   , rainbow
+  , colorValue
+  , sdlColor
   ) where
 
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)

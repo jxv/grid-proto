@@ -397,6 +397,9 @@ drawSymbol renderer fontMap ch color tileSize (x,y) = case Map.lookup ch (fontMa
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
+sdlColor :: Color -> Gfx.Color
+sdlColor = bgr . colorValue
+
 bgr :: (Word8, Word8, Word8) -> Gfx.Color
 bgr (r,g,b) = V4 (num r) (num g) (num b) 0xff
 

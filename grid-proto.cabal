@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d58a94687deaad2583e1ddd2e7d79c41295d95b95022961aab939039aa62f3e0
+-- hash: f92ba351f6974d5c102ecdeacf743748e59cd43d57ecbeabe2032516905b2842
 
 name:           grid-proto
 version:        0.1.0.0
@@ -29,7 +29,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      aeson >=1.4
+      StateVar
+    , aeson >=1.4
     , base >=4.7 && <5
     , bytestring
     , containers >=0.6
@@ -49,7 +50,8 @@ executable grid-proto-example
   hs-source-dirs:
       app
   build-depends:
-      aeson >=1.4
+      StateVar
+    , aeson >=1.4
     , base >=4.7 && <5
     , bytestring
     , containers >=0.6
