@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f92ba351f6974d5c102ecdeacf743748e59cd43d57ecbeabe2032516905b2842
+-- hash: 356c6a65f92d0d92611109a86cad69dbd8ce0ab6df6afea7fb35a70c4ccd56c0
 
 name:           grid-proto
 version:        0.1.0.0
@@ -38,6 +38,7 @@ library
     , sdl2 >=2.4.0
     , sdl2-fps
     , sdl2-gfx
+    , sdl2-mixer
     , sdl2-ttf
     , text >=1.2.3
     , vector >=0.12
@@ -60,6 +61,7 @@ executable grid-proto-example
     , sdl2 >=2.4.0
     , sdl2-fps
     , sdl2-gfx
+    , sdl2-mixer
     , sdl2-ttf
     , text >=1.2.3
     , vector >=0.12

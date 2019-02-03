@@ -11,11 +11,12 @@ import Control.Applicative ((<|>))
 import Data.Traversable (forM)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson.Types (FromJSONKey, ToJSONKey)
+import Data.Function (fix)
+import Data.Foldable (forM_)
+import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Monoid(..))
-import Data.Function (fix)
-import Data.Foldable (forM_)
 import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
 import Data.Word (Word8)
@@ -29,6 +30,7 @@ import qualified Data.Vector.Storable as VS
 import qualified SDL
 import qualified SDL.Font as Font
 import qualified SDL.Primitive as Gfx
+import qualified SDL.Mixer as Mixer
 
 data Color
   = Red0
@@ -232,7 +234,7 @@ keyChange event = case event of
     _ -> Nothing
 
 
-drawTileMap :: Color -> SDL.Renderer -> Int -> (Color -> Map Char (SDL.Texture, Int, Int)) -> Map (Int, Int) Tile -> IO ()
+drawTileMap :: Color -> SDL.Renderer -> Int -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Map (Int, Int) Tile -> IO ()
 drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Tile{symbol,shape,fill}) -> do
   drawFill renderer tileSize (x,y) fill
   case shape of
@@ -375,20 +377,22 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
     radius = floor $ halfTile * 0.8
     color' = colorPixel color
 
-drawSymbol :: SDL.Renderer -> (Color -> Map Char (SDL.Texture, Int, Int)) -> Char -> Color -> Int -> (Int, Int) -> IO ()
-drawSymbol renderer fontMap ch color tileSize (x,y) = case Map.lookup ch (fontMap color) of
-  Nothing -> return ()
-  Just (tex, offsetX, offsetY) -> do
-    SDL.TextureInfo{SDL.textureWidth=width,SDL.textureHeight=height} <- SDL.queryTexture tex
-    let wh = V2 width height
-    let wh2 = V2 (div width 2) (div height 2)
-    let offset = fromIntegral <$> V2 offsetX offsetY
-    let xy' = xy + center - wh2 - offset
-    SDL.copy
-      renderer
-      tex
-      Nothing
-      (Just $ SDL.Rectangle (SDL.P xy') wh)
+drawSymbol :: SDL.Renderer -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Char -> Color -> Int -> (Int, Int) -> IO ()
+drawSymbol renderer fontMap ch color tileSize (x,y) = do
+  m <- fontMap color ch
+  case m of
+    Nothing -> return ()
+    Just (tex, offsetX, offsetY) -> do
+      SDL.TextureInfo{SDL.textureWidth=width,SDL.textureHeight=height} <- SDL.queryTexture tex
+      let wh = V2 width height
+      let wh2 = V2 (div width 2) (div height 2)
+      let offset = fromIntegral <$> V2 offsetX offsetY
+      let xy' = xy + center - wh2 - offset
+      SDL.copy
+        renderer
+        tex
+        Nothing
+        (Just $ SDL.Rectangle (SDL.P xy') wh)
   where
     xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
     center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
@@ -494,37 +498,9 @@ tileByMousePosition tileSize (mx,my) (r,c)
   | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
   | otherwise = Just (mx `div` tileSize, my `div` tileSize)
 
-loadFonts :: SDL.Renderer -> Int -> IO (Color -> Map Char (SDL.Texture, Int, Int))
-loadFonts renderer tileSize = do
-  font <- Font.decode fontData (tileSize `div` 2)
-  offsets <- symbolOffsets font
-  symbols <- fmap fromList $ mapM (\color -> (color,) <$> makeSymbols font offsets color) [minBound..maxBound]
-  pure $ \color -> symbols ! color
-  where
-    makeSymbol :: Font.Font -> Char -> Color -> IO SDL.Texture
-    makeSymbol font ch color = toTexture renderer =<< (Font.solidGlyph font (colorPixel color) ch)
-    --
-    colors :: [Color]
-    colors = [minBound..maxBound]
-    --
-    symbolList :: [Char]
-    symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
-    --
-    symbolOffsets :: Font.Font -> IO (Map Char (Int, Int))
-    symbolOffsets font = fmap fromList $ forM symbolList $ \ch -> (ch,) <$> symbolOffset font ch
-    --
-    symbolOffset :: Font.Font -> Char -> IO (Int, Int)
-    symbolOffset font ch = do
-      metrics' <- Font.glyphMetrics font ch
-      case metrics' of
-        Nothing -> return (0,0)
-        Just (_,_,_,_,_) -> return (0,0)
-    --
-    makeSymbols :: Font.Font -> Map Char (Int, Int) -> Color -> IO (Map Char (SDL.Texture, Int, Int))
-    makeSymbols font offsetMap color = fmap fromList $ forM symbolList $ \ch -> do
-      symbol <- makeSymbol font ch color
-      let (x,y) = offsetMap ! ch
-      return (ch, (symbol, x, y))
+
+symbolList :: [Char]
+symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
 
 toTexture :: SDL.Renderer -> SDL.Surface -> IO SDL.Texture
 toTexture renderer surface = do
@@ -547,3 +523,38 @@ mergeTiles
   -> Map (Int, Int) Tile -- | Tiles to be placed
   -> Map (Int, Int) Tile
 mergeTiles old new = placeTilesAt old (0,0) new
+
+loadFont :: SDL.Renderer -> Int -> IO Font.Font
+loadFont renderer tileSize = Font.decode fontData (tileSize `div` 2)
+
+newFontMap :: IO (IORef (Map (Color, Char) SDL.Texture))
+newFontMap = newIORef Map.empty
+
+loadSymbol :: SDL.Renderer -> Font.Font -> Color -> Char -> IO (Maybe SDL.Texture)
+loadSymbol renderer font color ch
+  | not $ elem ch symbolList = return Nothing 
+  | otherwise = do
+      symSurface <- Font.solidGlyph font (colorPixel color) ch
+      symTex <- toTexture renderer symSurface
+      return $ Just symTex
+
+findSymbol
+  :: SDL.Renderer
+  -> Font.Font
+  -> IORef (Map (Color, Char) SDL.Texture)
+  -> Color
+  -> Char
+  -> IO (Maybe (SDL.Texture, Int, Int))
+findSymbol renderer font ref color ch = do
+  fontMap <- readIORef ref
+  case lookupMap (color, ch) fontMap of
+    Just tex -> return $ Just (tex, 0, 0)
+    Nothing -> do
+      mSym <- loadSymbol renderer font color ch
+      case mSym of
+        Nothing -> return Nothing
+        Just sym -> do
+          modifyIORef ref (insert (color, ch) sym)
+          return $ Just (sym, 0, 0)
+          
+

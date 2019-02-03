@@ -64,7 +64,9 @@ runClassic Classic
   Font.initialize
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * tilePixelSize) (num $ cols * tilePixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  fontMap <- loadFonts renderer tilePixelSize
+  font <- loadFont renderer tilePixelSize
+  fontMapRef <- newFontMap
+  let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
   let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty)
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
@@ -84,10 +86,11 @@ runClassic Classic
         let tileMap = tileMapFn state'
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
-        drawTileMap backgroundColor renderer tilePixelSize fontMap tileMap
+        drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
         SDL.present renderer
         endFrame 60 ticks
         loop (state', input')
+  Font.free font
   SDL.destroyWindow window
   Font.quit
   SDL.quit

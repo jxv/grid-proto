@@ -19,6 +19,7 @@ dependencies:
   - sdl2-gfx
   - sdl2-ttf
   - sdl2-fps
+  - sdl2-mixer
   - StateVar
   - containers >= 0.6
   - linear

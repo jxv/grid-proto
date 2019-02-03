@@ -24,7 +24,7 @@ classic = Classic
 
 update :: Input -> (Int, Int, Bool) -> IO (Int, Int, Bool)
 update Input{mouse=Mouse{mousePosition=(mx,my),mouseButton=mouseButton},keys=keys} _
-  | mouseButton == Pressed = return (mx,my, mx == 0 && my == my)
+  | mouseButton == Pressed = return (mx,my, mx == 0 && my == 0)
   | otherwise = return (mx, my, lookupKey keys Escape == Released)
 
 tileMap :: Int -> (Int, Int, Bool) -> Map (Int, Int) Tile
