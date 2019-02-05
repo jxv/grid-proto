@@ -28,6 +28,7 @@ import GridProto.Internal.Font
 import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
 import qualified SDL
+import qualified SDL.Raw.Event as Raw
 import qualified SDL.Font as Font
 import qualified SDL.Primitive as Gfx
 import qualified SDL.Mixer as Mixer
@@ -151,9 +152,61 @@ newtype Keys = Keys { unKeys :: Map Key KeyState }
 instance ToJSON Keys
 instance FromJSON Keys
 
+data Axis = Axis
+  { xAxis :: Float
+  , yAxis :: Float
+  } deriving (Show, Eq, Generic)
+
+instance ToJSON Axis
+instance FromJSON Axis
+
+data Controller = Controller
+  { startButton :: KeyState
+  , backButton :: KeyState
+  , guideButton :: KeyState
+  , dpadUp :: KeyState
+  , dpadDown :: KeyState
+  , dpadLeft :: KeyState
+  , dpadRight :: KeyState
+  , aButton :: KeyState
+  , bButton :: KeyState
+  , xButton :: KeyState
+  , yButton :: KeyState
+  , leftStick :: KeyState
+  , rightStick :: KeyState
+  , leftShoulder :: KeyState
+  , rightShoulder :: KeyState
+  , leftAxis :: Axis
+  , rightAxis :: Axis
+  } deriving (Show, Eq, Generic)
+
+initController :: Controller
+initController = Controller
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  (Axis 0 0)
+  (Axis 0 0)
+
+instance ToJSON Controller
+instance FromJSON Controller
+
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
+  , controller :: Controller
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -176,7 +229,6 @@ instance Semigroup Tile where
 instance Monoid Tile where
   mempty = Tile Nothing Nothing Nothing
 
-
 data Sfx
   = Attention
   deriving (Show, Eq)
@@ -191,7 +243,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys)
+makeInput Input{mouse,keys,controller} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller'
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -203,8 +255,16 @@ makeInput Input{mouse,keys} mpos' mclick eventPayloads = Input m (Keys $ nextKey
     m = Mouse mpos mbutton
     keyChanges = Map.fromList . catMaybes $ map keyChange eventPayloads
     removeReleased = Map.filter (/= Released)
-    pressedToHeld = Map.map (\ks -> if ks == Pressed then Held else ks)
-    nextKeys = Map.union keyChanges . removeReleased . pressedToHeld
+    pressedToHeld = Map.map stepKeyState
+    nextKeys = Map.union keyChanges . pressedToHeld . removeReleased
+    controller' = controller
+
+stepKeyState :: KeyState -> KeyState
+stepKeyState ks = case ks of
+  Pressed -> Held
+  Held -> Held
+  Released -> Untouched
+  Untouched -> Untouched
 
 keyFromKeyCode :: SDL.Keycode -> Maybe Key
 keyFromKeyCode = \case

@@ -3,6 +3,7 @@ module GridProto.Core
   , Color(..)
   , Shape(..)
   , Input(..)
+  , Controller(..)
   , Mouse(..)
   , Key(..)
   , KeyState(..)
