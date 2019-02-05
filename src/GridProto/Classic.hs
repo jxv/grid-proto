@@ -30,6 +30,7 @@ import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.FPS
 import SDL.Input.Keyboard.Codes
+import System.Mem (performGC)
 
 import GridProto.Internal.Core
 import GridProto.Internal.Font
@@ -88,6 +89,7 @@ runClassic Classic
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
         SDL.present renderer
+        performGC
         endFrame 60 ticks
         loop (state', input')
   Font.free font
