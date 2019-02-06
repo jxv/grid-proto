@@ -41,9 +41,9 @@ tileMap sides (mx,my,click) = fromList $ do
         if (x + y) `mod` 2 == 1
           then (Nothing, Nothing)
           else if y >= 0 && y <= 2
-            then (Just ('w', White1), Just (Circle,  White1))
+            then (Just ('W', White1), Just (Circle,  White1))
             else if y >= 5 && y <= 7
-              then (Just ('b', Black1), Just (Circle, Black1))
+              then (Just ('B', Black1), Just (Circle, Black1))
               else (Nothing, Nothing)
   return ((x,y), Tile symbol shape color)
 
