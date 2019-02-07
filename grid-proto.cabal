@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 356c6a65f92d0d92611109a86cad69dbd8ce0ab6df6afea7fb35a70c4ccd56c0
+-- hash: ab3764622a34ff40e01c6892f43caa28da92b23ae3db323c2559fbb01d07d8d0
 
 name:           grid-proto
 version:        0.1.0.0
@@ -25,6 +25,7 @@ library
   other-modules:
       GridProto.Internal.Core
       GridProto.Internal.Font
+      GridProto.Internal.SfxAttention
       Paths_grid_proto
   hs-source-dirs:
       src

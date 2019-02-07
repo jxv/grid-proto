@@ -8,6 +8,7 @@ module GridProto.Core
   , KeyState(..)
   , Keys(..)
   , Tile(..)
+  , Sfx(..)
   , lookupKey
   , placeTilesAt
   , mergeTiles

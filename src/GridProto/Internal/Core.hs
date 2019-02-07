@@ -176,6 +176,11 @@ instance Semigroup Tile where
 instance Monoid Tile where
   mempty = Tile Nothing Nothing Nothing
 
+
+data Sfx
+  = Attention
+  deriving (Show, Eq)
+
 lookupMap :: Ord k => k -> Map k a -> Maybe a
 lookupMap = Map.lookup
 
@@ -558,3 +563,6 @@ findSymbol renderer font ref color ch = do
           return $ Just (sym, 0, 0)
           
 
+playSfxs :: Mixer.Chunk -> [Sfx] -> IO ()
+playSfxs attention sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
+  Attention -> Mixer.playOn 0 1 attention

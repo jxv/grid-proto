@@ -11,6 +11,7 @@ import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
 import qualified SDL
 import qualified SDL.Font as Font
+import qualified SDL.Mixer as Mixer
 import qualified SDL.Primitive as Gfx
 import Prelude hiding (lookup)
 import GHC.Generics (Generic)
@@ -34,6 +35,7 @@ import System.Mem (performGC)
 
 import GridProto.Internal.Core
 import GridProto.Internal.Font
+import GridProto.Internal.SfxAttention
 
 data Classic s = Classic
   { title :: String
@@ -45,6 +47,7 @@ data Classic s = Classic
   , updateFn :: Input -> s -> IO s
   , cleanupFn :: s -> IO ()
   , tileMapFn :: s -> Map (Int, Int) Tile
+  , sfxFn :: s -> [Sfx]
   , quitFn :: s -> Bool
   }
 
@@ -57,16 +60,19 @@ runClassic Classic
   , backgroundColor
   , setupFn
   , updateFn
+  , sfxFn
   , tileMapFn
   , quitFn
   }
   = do
   SDL.initialize [SDL.InitVideo, SDL.InitAudio]
   Font.initialize
+  Mixer.openAudio Mixer.defaultAudio 256
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * tilePixelSize) (num $ cols * tilePixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   font <- loadFont renderer tilePixelSize
   fontMapRef <- newFontMap
+  attention <- Mixer.decode sfxAttentionData
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
   let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty)
@@ -84,16 +90,19 @@ runClassic Classic
       then return ()
       else do
         state' <- updateFn input state
+        let sfxs = sfxFn state'
         let tileMap = tileMapFn state'
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
+        playSfxs attention sfxs
         SDL.present renderer
         performGC
         endFrame 60 ticks
         loop (state', input')
   Font.free font
   SDL.destroyWindow window
+  Mixer.quit
   Font.quit
   SDL.quit
 
