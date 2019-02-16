@@ -35,9 +35,9 @@ tileMap sides (mx,my,click) = fromList $ do
   let color = Just $
         if (mx,my) == (x,y)
           -- Mouse color
-          then if click then Green1 else Violet0
+          then if click then Green1 else Azure0
           -- Alternate background colors
-          else if (x + y) `mod` 2 == 0 then Violet1 else Violet2
+          else if (x + y) `mod` 2 == 0 then Azure1 else Azure2
   let (symbol, shape) =
         if (x + y) `mod` 2 == 1
           then (Nothing, Nothing)
