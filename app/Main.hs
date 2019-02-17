@@ -17,7 +17,7 @@ classic = Classic
   , updateFn = update
   , cleanupFn = const (return ())
   , tileMapFn = tileMap sides
-  , sfxFn = \(x,y,_) -> if x == 7 && y == 7 then [Attention] else []
+  , sfxFn = \(x,y,_) -> if x == 7 && y == 7 then [Achievement] else []
   , quitFn = quit
   }
   where

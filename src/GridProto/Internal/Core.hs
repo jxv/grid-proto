@@ -230,7 +230,7 @@ instance Monoid Tile where
   mempty = Tile Nothing Nothing Nothing
 
 data Sfx
-  = Attention
+  = Achievement
   deriving (Show, Eq)
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
@@ -687,5 +687,5 @@ findSymbol renderer font ref color ch = do
           
 
 playSfxs :: Mixer.Chunk -> [Sfx] -> IO ()
-playSfxs attention sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
-  Attention -> Mixer.playOn 0 1 attention
+playSfxs achievement sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
+  Achievement -> Mixer.playOn 0 1 achievement

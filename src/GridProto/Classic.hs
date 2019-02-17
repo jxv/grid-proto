@@ -38,7 +38,7 @@ import System.Mem (performGC)
 
 import GridProto.Internal.Core
 import GridProto.Internal.Font
-import GridProto.Internal.SfxAttention
+import GridProto.Internal.SfxAchievement
 
 data Classic s = Classic
   { title :: String
@@ -81,7 +81,7 @@ runClassic Classic
   gameControllers <- mapM Event.gameControllerOpen gameControllerIds
   font <- loadFont renderer tilePixelSize
   fontMapRef <- newFontMap
-  attention <- Mixer.decode sfxAttentionData
+  achievement <- Mixer.decode sfxAchievementData
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
   let initInput = Input
@@ -98,7 +98,6 @@ runClassic Classic
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
     let input' = makeInput input mouseTilePos mouseClick eventPayloads
-    print input'
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
@@ -108,7 +107,7 @@ runClassic Classic
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
-        playSfxs attention sfxs
+        playSfxs achievement sfxs
         SDL.present renderer
         performGC
         endFrame 60 ticks
