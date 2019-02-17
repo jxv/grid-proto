@@ -84,7 +84,10 @@ runClassic Classic
   attention <- Mixer.decode sfxAttentionData
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
-  let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty) initController
+  let initInput = Input
+        (Mouse (0,0) Untouched)
+        (Keys Map.empty)
+        (Map.fromList $ zip [0..] $ replicate (fromIntegral numJoysticks) initController)
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
     ticks <- startFrame
     let quit = quitFn state

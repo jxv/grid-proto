@@ -206,7 +206,7 @@ instance FromJSON Controller
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
-  , controller :: Controller
+  , controllers :: Map Int Controller
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -243,7 +243,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys,controller} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller'
+makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controllers'
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -257,7 +257,9 @@ makeInput Input{mouse,keys,controller} mpos' mclick eventPayloads = Input m (Key
     removeReleased = Map.filter (/= Released)
     pressedToHeld = Map.map stepKeyState
     nextKeys = Map.union keyChanges . pressedToHeld . removeReleased
-    controller' = foldr applyControllerChange (stepController controller) eventPayloads
+    controllers' = Map.mapWithKey
+      (\idx controller -> foldr (applyControllerChange idx) (stepController controller) eventPayloads)
+      controllers
 
 normalizeInt16 :: Int16 -> Float
 normalizeInt16 w = let
@@ -266,18 +268,18 @@ normalizeInt16 w = let
   clamp x = if x > 1 then 1 else (if x < -1 then -1 else x)
   in clamp $ deadzone f
 
-applyControllerChange :: SDL.EventPayload -> Controller -> Controller
-applyControllerChange event c = case event of
+applyControllerChange :: Int -> SDL.EventPayload -> Controller -> Controller
+applyControllerChange idx event c = case event of
   SDL.ControllerButtonEvent (SDL.ControllerButtonEventData 0 button buttonState) -> fromMaybe c (update button <$> toKeyState buttonState)
-  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData 0 0 i) -> c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } }
-  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData 0 1 i) -> c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } }
-  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData 0 2 i) -> c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } }
-  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData 0 3 i) -> c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } }
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 2 i) -> if j == jId then c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 3 i) -> if j == jId then c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } } else c
   --
-  SDL.JoyAxisEvent (SDL.JoyAxisEventData 0 0 i) -> c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } }
-  SDL.JoyAxisEvent (SDL.JoyAxisEventData 0 1 i) -> c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } }
-  SDL.JoyAxisEvent (SDL.JoyAxisEventData 0 2 i) -> c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } }
-  SDL.JoyAxisEvent (SDL.JoyAxisEventData 0 3 i) -> c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } }
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 2 i) -> if j == jId then c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 3 i) -> if j == jId then c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } } else c
   _ -> c
   where
     toKeyState buttonState = case buttonState of
@@ -300,6 +302,7 @@ applyControllerChange event c = case event of
       ControllerButtonLeftShoulder -> c { leftShoulder = v }
       ControllerButtonRightShoulder -> c { rightShoulder = v }
       _ -> c
+    jId = fromIntegral idx
 
 stepController :: Controller -> Controller
 stepController c = c
