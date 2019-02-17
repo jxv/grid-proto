@@ -95,10 +95,11 @@ runClassic Classic
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
     let input' = makeInput input mouseTilePos mouseClick eventPayloads
+    print input'
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
-        state' <- updateFn input state
+        state' <- updateFn input' state
         let sfxs = sfxFn state'
         let tileMap = tileMapFn state'
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
