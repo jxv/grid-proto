@@ -9,7 +9,9 @@ module GridProto.Classic
 
 import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
+import qualified Data.Vector as V
 import qualified SDL
+import qualified SDL.Raw.Event as Event
 import qualified SDL.Font as Font
 import qualified SDL.Mixer as Mixer
 import qualified SDL.Primitive as Gfx
@@ -23,6 +25,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Function (fix)
 import Data.Foldable (forM_)
+import Data.Traversable (forM)
 import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
 import Data.Word (Word8)
@@ -65,17 +68,26 @@ runClassic Classic
   , quitFn
   }
   = do
-  SDL.initialize [SDL.InitVideo, SDL.InitAudio]
+  SDL.initialize [SDL.InitVideo, SDL.InitAudio, SDL.InitGameController]
   Font.initialize
   Mixer.openAudio Mixer.defaultAudio 256
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * tilePixelSize) (num $ cols * tilePixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
+  numJoysticks <- SDL.numJoysticks
+  joystickDevices <- SDL.availableJoysticks
+  gameControllerIds <- fmap (fmap snd . V.filter fst) $ forM joystickDevices $ \jd -> do
+    let jdId = SDL.joystickDeviceId jd
+    (,) <$> Event.isGameController jdId <*> pure jdId
+  gameControllers <- mapM Event.gameControllerOpen gameControllerIds
   font <- loadFont renderer tilePixelSize
   fontMapRef <- newFontMap
   attention <- Mixer.decode sfxAttentionData
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
-  let initInput = Input (Mouse (0,0) Untouched) (Keys Map.empty)
+  let initInput = Input
+        (Mouse (0,0) Untouched)
+        (Keys Map.empty)
+        (Map.fromList $ zip [0..] $ replicate (fromIntegral numJoysticks) initController)
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
     ticks <- startFrame
     let quit = quitFn state
@@ -86,10 +98,11 @@ runClassic Classic
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
     let input' = makeInput input mouseTilePos mouseClick eventPayloads
+    print input'
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
-        state' <- updateFn input state
+        state' <- updateFn input' state
         let sfxs = sfxFn state'
         let tileMap = tileMapFn state'
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
@@ -100,6 +113,7 @@ runClassic Classic
         performGC
         endFrame 60 ticks
         loop (state', input')
+  mapM_ Event.gameControllerClose gameControllers
   Font.free font
   SDL.destroyWindow window
   Mixer.quit

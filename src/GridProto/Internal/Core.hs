@@ -20,14 +20,17 @@ import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
 import Data.Word (Word8)
+import Data.Int (Int16)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.Input.Keyboard.Codes
+import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..))
 import GridProto.Internal.Font
 
 import qualified Data.Map as Map
 import qualified Data.Vector.Storable as VS
 import qualified SDL
+import qualified SDL.Raw.Event as Raw
 import qualified SDL.Font as Font
 import qualified SDL.Primitive as Gfx
 import qualified SDL.Mixer as Mixer
@@ -151,9 +154,59 @@ newtype Keys = Keys { unKeys :: Map Key KeyState }
 instance ToJSON Keys
 instance FromJSON Keys
 
+data Axis = Axis
+  { xAxis :: Float
+  , yAxis :: Float
+  } deriving (Show, Eq, Generic)
+
+instance ToJSON Axis
+instance FromJSON Axis
+
+data Controller = Controller
+  { startButton :: KeyState
+  , backButton :: KeyState
+  , dpadUp :: KeyState
+  , dpadDown :: KeyState
+  , dpadLeft :: KeyState
+  , dpadRight :: KeyState
+  , aButton :: KeyState
+  , bButton :: KeyState
+  , xButton :: KeyState
+  , yButton :: KeyState
+  , leftStick :: KeyState
+  , rightStick :: KeyState
+  , leftShoulder :: KeyState
+  , rightShoulder :: KeyState
+  , leftAxis :: Axis
+  , rightAxis :: Axis
+  } deriving (Show, Eq, Generic)
+
+initController :: Controller
+initController = Controller
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  Untouched
+  (Axis 0 0)
+  (Axis 0 0)
+
+instance ToJSON Controller
+instance FromJSON Controller
+
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
+  , controllers :: Map Int Controller
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -176,7 +229,6 @@ instance Semigroup Tile where
 instance Monoid Tile where
   mempty = Tile Nothing Nothing Nothing
 
-
 data Sfx
   = Attention
   deriving (Show, Eq)
@@ -191,7 +243,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys)
+makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controllers'
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -203,8 +255,79 @@ makeInput Input{mouse,keys} mpos' mclick eventPayloads = Input m (Keys $ nextKey
     m = Mouse mpos mbutton
     keyChanges = Map.fromList . catMaybes $ map keyChange eventPayloads
     removeReleased = Map.filter (/= Released)
-    pressedToHeld = Map.map (\ks -> if ks == Pressed then Held else ks)
-    nextKeys = Map.union keyChanges . removeReleased . pressedToHeld
+    pressedToHeld = Map.map stepKeyState
+    nextKeys = Map.union keyChanges . pressedToHeld . removeReleased
+    controllers' = Map.mapWithKey
+      (\idx controller -> foldr (applyControllerChange idx) (stepController controller) eventPayloads)
+      controllers
+
+normalizeInt16 :: Int16 -> Float
+normalizeInt16 w = let
+  f = fromIntegral w / (fromIntegral (maxBound :: Int16))
+  deadzone x = if x < 0.05 && x > -0.05 then 0 else x
+  clamp x = if x > 1 then 1 else (if x < -1 then -1 else x)
+  in clamp $ deadzone f
+
+applyControllerChange :: Int -> SDL.EventPayload -> Controller -> Controller
+applyControllerChange idx event c = case event of
+  SDL.ControllerButtonEvent (SDL.ControllerButtonEventData 0 button buttonState) -> fromMaybe c (update button <$> toKeyState buttonState)
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 2 i) -> if j == jId then c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 3 i) -> if j == jId then c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } } else c
+  --
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 2 i) -> if j == jId then c { rightAxis = (rightAxis c) { xAxis = normalizeInt16 i } } else c
+  SDL.JoyAxisEvent (SDL.JoyAxisEventData j 3 i) -> if j == jId then c { rightAxis = (rightAxis c) { yAxis = normalizeInt16 i } } else c
+  _ -> c
+  where
+    toKeyState buttonState = case buttonState of
+      ControllerButtonPressed -> Just Pressed
+      ControllerButtonReleased -> Just Released
+      _ -> Nothing
+    update button v = case button of
+      ControllerButtonStart -> c { startButton = v }
+      ControllerButtonBack -> c { backButton = v }
+      ControllerButtonDpadUp -> c { dpadUp = v }
+      ControllerButtonDpadDown -> c { dpadDown = v }
+      ControllerButtonDpadLeft -> c { dpadLeft = v }
+      ControllerButtonDpadRight -> c { dpadRight = v }
+      ControllerButtonA -> c { aButton = v }
+      ControllerButtonB -> c { bButton = v }
+      ControllerButtonX -> c { xButton = v }
+      ControllerButtonY -> c { yButton = v }
+      ControllerButtonLeftStick -> c { leftStick = v }
+      ControllerButtonRightStick -> c { rightStick = v }
+      ControllerButtonLeftShoulder -> c { leftShoulder = v }
+      ControllerButtonRightShoulder -> c { rightShoulder = v }
+      _ -> c
+    jId = fromIntegral idx
+
+stepController :: Controller -> Controller
+stepController c = c
+  { startButton = stepKeyState $ startButton c
+  , backButton = stepKeyState $ backButton c
+  , dpadUp = stepKeyState $ dpadUp c
+  , dpadDown = stepKeyState $ dpadDown c
+  , dpadLeft = stepKeyState $ dpadLeft c
+  , dpadRight = stepKeyState $ dpadRight c
+  , aButton = stepKeyState $ aButton c
+  , bButton = stepKeyState $ bButton c
+  , xButton = stepKeyState $ xButton c
+  , yButton = stepKeyState $ yButton c
+  , leftStick = stepKeyState $ leftStick c
+  , rightStick = stepKeyState $ rightStick c
+  , leftShoulder = stepKeyState $ leftShoulder c
+  , rightShoulder = stepKeyState $ rightShoulder c
+  }
+
+stepKeyState :: KeyState -> KeyState
+stepKeyState ks = case ks of
+  Pressed -> Held
+  Held -> Held
+  Released -> Untouched
+  Untouched -> Untouched
 
 keyFromKeyCode :: SDL.Keycode -> Maybe Key
 keyFromKeyCode = \case
