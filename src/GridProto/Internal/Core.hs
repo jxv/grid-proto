@@ -231,6 +231,7 @@ instance Monoid Tile where
 
 data Sfx
   = Achievement
+  | Gong
   deriving (Show, Eq)
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
@@ -686,6 +687,7 @@ findSymbol renderer font ref color ch = do
           return $ Just (sym, 0, 0)
           
 
-playSfxs :: Mixer.Chunk -> [Sfx] -> IO ()
-playSfxs achievement sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
+playSfxs :: Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
+playSfxs achievement gong sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
   Achievement -> Mixer.playOn 0 1 achievement
+  Gong -> Mixer.playOn 0 2 gong

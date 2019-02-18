@@ -39,6 +39,7 @@ import System.Mem (performGC)
 import GridProto.Internal.Core
 import GridProto.Internal.Font
 import GridProto.Internal.SfxAchievement
+import GridProto.Internal.SfxGong
 
 data Classic s = Classic
   { title :: String
@@ -79,9 +80,12 @@ runClassic Classic
     let jdId = SDL.joystickDeviceId jd
     (,) <$> Event.isGameController jdId <*> pure jdId
   gameControllers <- mapM Event.gameControllerOpen gameControllerIds
+  --
+  achievement <- Mixer.decode sfxAchievementData
+  gong <- Mixer.decode sfxGongData
+  --
   font <- loadFont renderer tilePixelSize
   fontMapRef <- newFontMap
-  achievement <- Mixer.decode sfxAchievementData
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
   let initInput = Input
@@ -107,7 +111,7 @@ runClassic Classic
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
-        playSfxs achievement sfxs
+        playSfxs achievement gong sfxs
         SDL.present renderer
         performGC
         endFrame 60 ticks
