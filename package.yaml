@@ -38,11 +38,19 @@ library:
   source-dirs: src
 
 executables:
-  grid-proto-board:
+  board-example:
     when:
       condition: flag(examples)
       buildable: true
     source-dirs: examples/board
+    main: Main.hs
+    dependencies:
+      - grid-proto
+  controller-example:
+    when:
+      condition: flag(examples)
+      buildable: true
+    source-dirs: examples/controller
     main: Main.hs
     dependencies:
       - grid-proto

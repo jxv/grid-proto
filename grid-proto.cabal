@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3829274d9beca5068f8a6d8c9b7d9b518aad5d3a481e69c1e5839b5098f0b363
+-- hash: b4948e6ee60809c053dd1977b1435dbf8f8e84db72d6bdf57fe62978f0db904a
 
 name:           grid-proto
 version:        0.1.0.0
@@ -50,12 +50,37 @@ library
     , vector >=0.12
   default-language: Haskell2010
 
-executable grid-proto-board
+executable board-example
   main-is: Main.hs
   other-modules:
       Paths_grid_proto
   hs-source-dirs:
       examples/board
+  build-depends:
+      StateVar
+    , aeson >=1.4
+    , base >=4.7 && <5
+    , bytestring
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-fps
+    , sdl2-gfx
+    , sdl2-mixer
+    , sdl2-ttf
+    , text >=1.2.3
+    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable controller-example
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      examples/controller
   build-depends:
       StateVar
     , aeson >=1.4

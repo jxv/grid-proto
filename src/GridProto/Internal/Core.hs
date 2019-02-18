@@ -653,8 +653,10 @@ mergeTiles
   -> Map (Int, Int) Tile
 mergeTiles old new = placeTilesAt old (0,0) new
 
-loadFont :: SDL.Renderer -> Int -> IO Font.Font
-loadFont renderer tileSize = Font.decode fontData (tileSize `div` 2)
+loadFont :: SDL.Renderer -> Int -> IO (Font.Font, Int)
+loadFont renderer tileSize = (,) <$> Font.decode fontData size <*> pure size
+  where
+    size = tileSize `div` 2
 
 newFontMap :: IO (IORef (Map (Color, Char) SDL.Texture))
 newFontMap = newIORef Map.empty
@@ -666,6 +668,11 @@ loadSymbol renderer font color ch
       symSurface <- Font.solidGlyph font (colorPixel color) ch
       symTex <- toTexture renderer symSurface
       return $ Just symTex
+
+loadSymbols :: SDL.Renderer -> Font.Font -> Color -> IO SDL.Texture
+loadSymbols renderer font color = do
+  symSurface <- Font.solid font (colorPixel color) (pack symbolList)
+  toTexture renderer symSurface
 
 findSymbol
   :: SDL.Renderer

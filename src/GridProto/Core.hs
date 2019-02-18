@@ -4,6 +4,7 @@ module GridProto.Core
   , Shape(..)
   , Input(..)
   , Controller(..)
+  , Axis(..)
   , Mouse(..)
   , Key(..)
   , KeyState(..)

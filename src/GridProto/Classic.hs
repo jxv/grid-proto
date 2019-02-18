@@ -84,7 +84,7 @@ runClassic Classic
   achievement <- Mixer.decode sfxAchievementData
   gong <- Mixer.decode sfxGongData
   --
-  font <- loadFont renderer tilePixelSize
+  (font, fontSize) <- loadFont renderer tilePixelSize
   fontMapRef <- newFontMap
   let findSymbol' = findSymbol renderer font fontMapRef
   initialState <- setupFn
