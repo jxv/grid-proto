@@ -46,6 +46,14 @@ executables:
     main: Main.hs
     dependencies:
       - grid-proto
+  text-example:
+    when:
+      condition: flag(examples)
+      buildable: true
+    source-dirs: examples/text
+    main: Main.hs
+    dependencies:
+      - grid-proto
   controller-example:
     when:
       condition: flag(examples)
