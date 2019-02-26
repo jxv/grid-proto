@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 65be3b71927f364c978347952cdfcbcfdd749785cd98ed6dc1209f865e353d40
+-- hash: 7521059dc5b5640822926c1f0aea72c36fcbba4eaca65ea08b567461bffa96a4
 
 name:           grid-proto
 version:        0.1.0.0
@@ -29,7 +29,8 @@ library
   other-modules:
       GridProto.Internal.Core
       GridProto.Internal.Font
-      GridProto.Internal.SfxAttention
+      GridProto.Internal.SfxAchievement
+      GridProto.Internal.SfxGong
       Paths_grid_proto
   hs-source-dirs:
       src
@@ -49,12 +50,87 @@ library
     , vector >=0.12
   default-language: Haskell2010
 
-executable grid-proto-example
+executable arrows-example
   main-is: Main.hs
   other-modules:
       Paths_grid_proto
   hs-source-dirs:
-      app
+      examples/arrows
+  build-depends:
+      StateVar
+    , aeson >=1.4
+    , base >=4.7 && <5
+    , bytestring
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-fps
+    , sdl2-gfx
+    , sdl2-mixer
+    , sdl2-ttf
+    , text >=1.2.3
+    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable board-example
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      examples/board
+  build-depends:
+      StateVar
+    , aeson >=1.4
+    , base >=4.7 && <5
+    , bytestring
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-fps
+    , sdl2-gfx
+    , sdl2-mixer
+    , sdl2-ttf
+    , text >=1.2.3
+    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable controller-example
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      examples/controller
+  build-depends:
+      StateVar
+    , aeson >=1.4
+    , base >=4.7 && <5
+    , bytestring
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-fps
+    , sdl2-gfx
+    , sdl2-mixer
+    , sdl2-ttf
+    , text >=1.2.3
+    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable text-example
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      examples/text
   build-depends:
       StateVar
     , aeson >=1.4
