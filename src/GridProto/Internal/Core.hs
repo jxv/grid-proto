@@ -420,6 +420,7 @@ drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Ti
     Nothing -> return ()
     Just (symbol', color) -> drawSymbol renderer fontMap symbol' color tileSize (x,y)
 
+
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
 drawFill _ _ _ Nothing = return ()
 drawFill renderer tileSize (x,y) (Just color) = do
@@ -572,8 +573,27 @@ drawSymbol renderer fontMap ch color tileSize (x,y) = do
   where
     xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
     center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
-    
 
+drawSymbol' :: SDL.Renderer -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Char -> Color -> Int -> (Int, Int) -> IO ()
+drawSymbol' renderer fontMap ch color tileSize (x,y) = do
+  m <- fontMap color ch
+  case m of
+    Nothing -> return ()
+    Just (tex, offsetX, offsetWidth) -> do
+      SDL.TextureInfo{SDL.textureWidth=_texWidth,SDL.textureHeight=texHeight} <- SDL.queryTexture tex
+      let wh = V2 (fromIntegral offsetWidth) texHeight
+      let wh2 = V2 (div (fromIntegral offsetWidth) 2) (div texHeight 2)
+      -- let offset = fromIntegral <$> V2 offsetX 0 -- offsetY
+      let xy' = xy + center - wh2 -- - offset
+      SDL.copy
+        renderer
+        tex
+        (Just $ SDL.Rectangle (SDL.P (fromIntegral <$> V2 offsetX 0)) (V2 (fromIntegral offsetWidth) texHeight)) 
+        (Just $ SDL.Rectangle (SDL.P xy') wh)
+  where
+    xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
+    center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
+    
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
@@ -705,41 +725,37 @@ loadFont renderer tileSize = (,) <$> Font.decode fontData size <*> pure size
   where
     size = tileSize `div` 2
 
-newFontMap :: IO (IORef (Map (Color, Char) SDL.Texture))
-newFontMap = newIORef Map.empty
-
-loadSymbol :: SDL.Renderer -> Font.Font -> Color -> Char -> IO (Maybe SDL.Texture)
-loadSymbol renderer font color ch
-  | not $ elem ch symbolList = return Nothing 
-  | otherwise = do
-      symSurface <- Font.solidGlyph font (colorPixel color) ch
-      symTex <- toTexture renderer symSurface
-      return $ Just symTex
+newFontColorMap :: IO (IORef (Map Color SDL.Texture))
+newFontColorMap = newIORef Map.empty
 
 loadSymbols :: SDL.Renderer -> Font.Font -> Color -> IO SDL.Texture
 loadSymbols renderer font color = do
   symSurface <- Font.solid font (colorPixel color) (pack symbolList)
   toTexture renderer symSurface
 
-findSymbol
+findSymbols
   :: SDL.Renderer
   -> Font.Font
-  -> IORef (Map (Color, Char) SDL.Texture)
+  -> Int
+  -> IORef (Map Color SDL.Texture)
   -> Color
   -> Char
   -> IO (Maybe (SDL.Texture, Int, Int))
-findSymbol renderer font ref color ch = do
+findSymbols renderer font width ref color ch = do
+  let width' = width `div` 2
   fontMap <- readIORef ref
-  case lookupMap (color, ch) fontMap of
-    Just tex -> return $ Just (tex, 0, 0)
-    Nothing -> do
-      mSym <- loadSymbol renderer font color ch
-      case mSym of
-        Nothing -> return Nothing
-        Just sym -> do
-          modifyIORef ref (insert (color, ch) sym)
-          return $ Just (sym, 0, 0)
-          
+  case lookupMap color fontMap of
+    Just tex -> case lookupMap ch offsets of
+      Nothing -> return Nothing
+      Just off -> return $ Just (tex, off * width', width')
+    Nothing -> case lookupMap ch offsets of
+      Nothing -> return Nothing
+      Just off -> do
+        sym <- loadSymbols renderer font color
+        modifyIORef ref (insert color sym)
+        return $ Just (sym, off * width', width')
+  where
+    offsets = Map.fromList $ zip symbolList [0..]
 
 playSfxs :: Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
 playSfxs achievement gong sfxs = flip mapM_ sfxs $ \sfx -> case sfx of

@@ -85,8 +85,8 @@ runClassic Classic
   gong <- Mixer.decode sfxGongData
   --
   (font, fontSize) <- loadFont renderer tilePixelSize
-  fontMapRef <- newFontMap
-  let findSymbol' = findSymbol renderer font fontMapRef
+  fontColorMapRef <- newFontColorMap
+  let findSymbols' = findSymbols renderer font fontSize fontColorMapRef
   initialState <- setupFn
   let initInput = Input
         (Mouse (0,0) Untouched)
@@ -110,7 +110,7 @@ runClassic Classic
         let tileMap = tileMapFn state'
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
-        drawTileMap backgroundColor renderer tilePixelSize findSymbol' tileMap
+        drawTileMap backgroundColor renderer tilePixelSize findSymbols' tileMap
         playSfxs achievement gong sfxs
         SDL.present renderer
         performGC
