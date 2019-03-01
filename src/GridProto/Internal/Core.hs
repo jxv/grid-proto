@@ -387,6 +387,7 @@ keyFromKeyCode = \case
   Keycode8 -> Just $ Char '8'
   Keycode9 -> Just $ Char '9'
   --
+  KeycodeBackquote -> Just $ Char '`'
   KeycodeMinus -> Just $ Char '-'
   KeycodeEquals -> Just $ Char '='
   KeycodeLeftBracket -> Just $ Char '['
