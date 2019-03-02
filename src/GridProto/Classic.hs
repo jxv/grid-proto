@@ -91,7 +91,10 @@ runClassic Classic
   let initInput = Input
         (Mouse (0,0) Untouched)
         (Keys Map.empty)
-        (Map.fromList $ zip [0..] $ replicate (fromIntegral numJoysticks) initController)
+        initController { isConnected = elem 0 gameControllerIds }
+        initController { isConnected = elem 1 gameControllerIds }
+        initController { isConnected = elem 2 gameControllerIds }
+        initController { isConnected = elem 3 gameControllerIds }
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
     ticks <- startFrame
     let quit = quitFn state

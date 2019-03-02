@@ -24,7 +24,7 @@ import Data.Int (Int16)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.Input.Keyboard.Codes
-import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..))
+import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..), ControllerDeviceConnection(..))
 import GridProto.Internal.Font
 
 import qualified Data.Map as Map
@@ -163,7 +163,8 @@ instance ToJSON Axis
 instance FromJSON Axis
 
 data Controller = Controller
-  { startButton :: KeyState
+  { isConnected :: Bool
+  , startButton :: KeyState
   , backButton :: KeyState
   , dpadUp :: KeyState
   , dpadDown :: KeyState
@@ -183,6 +184,7 @@ data Controller = Controller
 
 initController :: Controller
 initController = Controller
+  False
   Untouched
   Untouched
   Untouched
@@ -206,7 +208,10 @@ instance FromJSON Controller
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
-  , controllers :: Map Int Controller
+  , controller1 :: Controller
+  , controller2 :: Controller
+  , controller3 :: Controller
+  , controller4 :: Controller
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -244,7 +249,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controllers'
+makeInput Input{mouse,keys,controller1,controller2,controller3,controller4} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller1' controller2' controller3' controller4'
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -258,9 +263,10 @@ makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Ke
     removeReleased = Map.filter (/= Released)
     pressedToHeld = Map.map stepKeyState
     nextKeys = Map.union keyChanges . pressedToHeld . removeReleased
-    controllers' = Map.mapWithKey
-      (\idx controller -> foldr (applyControllerChange idx) (stepController controller) eventPayloads)
-      controllers
+    controller1' = foldr (applyControllerChange 0) (stepController controller1) eventPayloads
+    controller2' = foldr (applyControllerChange 1) (stepController controller2) eventPayloads
+    controller3' = foldr (applyControllerChange 2) (stepController controller3) eventPayloads
+    controller4' = foldr (applyControllerChange 3) (stepController controller4) eventPayloads
 
 normalizeInt16 :: Int16 -> Float
 normalizeInt16 w = let
@@ -271,6 +277,7 @@ normalizeInt16 w = let
 
 applyControllerChange :: Int -> SDL.EventPayload -> Controller -> Controller
 applyControllerChange idx event c = case event of
+  SDL.ControllerDeviceEvent (SDL.ControllerDeviceEventData ControllerDeviceRemoved j) -> if j == jId then c { isConnected = False } else c
   SDL.ControllerButtonEvent (SDL.ControllerButtonEventData 0 button buttonState) -> fromMaybe c (update button <$> toKeyState buttonState)
   SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
   SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
@@ -694,7 +701,6 @@ tileByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
 tileByMousePosition tileSize (mx,my) (r,c)
   | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
   | otherwise = Just (mx `div` tileSize, my `div` tileSize)
-
 
 symbolList :: [Char]
 symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
