@@ -24,7 +24,7 @@ import Data.Int (Int16)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
 import SDL.Input.Keyboard.Codes
-import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..))
+import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..), ControllerDeviceConnection(..))
 import GridProto.Internal.Font
 
 import qualified Data.Map as Map
@@ -163,7 +163,8 @@ instance ToJSON Axis
 instance FromJSON Axis
 
 data Controller = Controller
-  { startButton :: KeyState
+  { isConnected :: Bool
+  , startButton :: KeyState
   , backButton :: KeyState
   , dpadUp :: KeyState
   , dpadDown :: KeyState
@@ -183,6 +184,7 @@ data Controller = Controller
 
 initController :: Controller
 initController = Controller
+  False
   Untouched
   Untouched
   Untouched
@@ -206,7 +208,10 @@ instance FromJSON Controller
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
-  , controllers :: Map Int Controller
+  , controller1 :: Controller
+  , controller2 :: Controller
+  , controller3 :: Controller
+  , controller4 :: Controller
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -244,7 +249,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controllers'
+makeInput Input{mouse,keys,controller1,controller2,controller3,controller4} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller1' controller2' controller3' controller4'
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -258,9 +263,10 @@ makeInput Input{mouse,keys,controllers} mpos' mclick eventPayloads = Input m (Ke
     removeReleased = Map.filter (/= Released)
     pressedToHeld = Map.map stepKeyState
     nextKeys = Map.union keyChanges . pressedToHeld . removeReleased
-    controllers' = Map.mapWithKey
-      (\idx controller -> foldr (applyControllerChange idx) (stepController controller) eventPayloads)
-      controllers
+    controller1' = foldr (applyControllerChange 0) (stepController controller1) eventPayloads
+    controller2' = foldr (applyControllerChange 1) (stepController controller2) eventPayloads
+    controller3' = foldr (applyControllerChange 2) (stepController controller3) eventPayloads
+    controller4' = foldr (applyControllerChange 3) (stepController controller4) eventPayloads
 
 normalizeInt16 :: Int16 -> Float
 normalizeInt16 w = let
@@ -271,6 +277,7 @@ normalizeInt16 w = let
 
 applyControllerChange :: Int -> SDL.EventPayload -> Controller -> Controller
 applyControllerChange idx event c = case event of
+  SDL.ControllerDeviceEvent (SDL.ControllerDeviceEventData ControllerDeviceRemoved j) -> if j == jId then c { isConnected = False } else c
   SDL.ControllerButtonEvent (SDL.ControllerButtonEventData 0 button buttonState) -> fromMaybe c (update button <$> toKeyState buttonState)
   SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 0 i) -> if j == jId then c { leftAxis = (leftAxis c) { xAxis = normalizeInt16 i } } else c
   SDL.ControllerAxisEvent (SDL.ControllerAxisEventData j 1 i) -> if j == jId then c { leftAxis = (leftAxis c) { yAxis = normalizeInt16 i } } else c
@@ -387,6 +394,7 @@ keyFromKeyCode = \case
   Keycode8 -> Just $ Char '8'
   Keycode9 -> Just $ Char '9'
   --
+  KeycodeBackquote -> Just $ Char '`'
   KeycodeMinus -> Just $ Char '-'
   KeycodeEquals -> Just $ Char '='
   KeycodeLeftBracket -> Just $ Char '['
@@ -419,6 +427,7 @@ drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Ti
   case symbol of
     Nothing -> return ()
     Just (symbol', color) -> drawSymbol renderer fontMap symbol' color tileSize (x,y)
+
 
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
 drawFill _ _ _ Nothing = return ()
@@ -572,8 +581,27 @@ drawSymbol renderer fontMap ch color tileSize (x,y) = do
   where
     xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
     center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
-    
 
+drawSymbol' :: SDL.Renderer -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Char -> Color -> Int -> (Int, Int) -> IO ()
+drawSymbol' renderer fontMap ch color tileSize (x,y) = do
+  m <- fontMap color ch
+  case m of
+    Nothing -> return ()
+    Just (tex, offsetX, offsetWidth) -> do
+      SDL.TextureInfo{SDL.textureWidth=_texWidth,SDL.textureHeight=texHeight} <- SDL.queryTexture tex
+      let wh = V2 (fromIntegral offsetWidth) texHeight
+      let wh2 = V2 (div (fromIntegral offsetWidth) 2) (div texHeight 2)
+      -- let offset = fromIntegral <$> V2 offsetX 0 -- offsetY
+      let xy' = xy + center - wh2 -- - offset
+      SDL.copy
+        renderer
+        tex
+        (Just $ SDL.Rectangle (SDL.P (fromIntegral <$> V2 offsetX 0)) (V2 (fromIntegral offsetWidth) texHeight)) 
+        (Just $ SDL.Rectangle (SDL.P xy') wh)
+  where
+    xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
+    center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
+    
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
@@ -674,7 +702,6 @@ tileByMousePosition tileSize (mx,my) (r,c)
   | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
   | otherwise = Just (mx `div` tileSize, my `div` tileSize)
 
-
 symbolList :: [Char]
 symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
 
@@ -705,41 +732,37 @@ loadFont renderer tileSize = (,) <$> Font.decode fontData size <*> pure size
   where
     size = tileSize `div` 2
 
-newFontMap :: IO (IORef (Map (Color, Char) SDL.Texture))
-newFontMap = newIORef Map.empty
-
-loadSymbol :: SDL.Renderer -> Font.Font -> Color -> Char -> IO (Maybe SDL.Texture)
-loadSymbol renderer font color ch
-  | not $ elem ch symbolList = return Nothing 
-  | otherwise = do
-      symSurface <- Font.solidGlyph font (colorPixel color) ch
-      symTex <- toTexture renderer symSurface
-      return $ Just symTex
+newFontColorMap :: IO (IORef (Map Color SDL.Texture))
+newFontColorMap = newIORef Map.empty
 
 loadSymbols :: SDL.Renderer -> Font.Font -> Color -> IO SDL.Texture
 loadSymbols renderer font color = do
   symSurface <- Font.solid font (colorPixel color) (pack symbolList)
   toTexture renderer symSurface
 
-findSymbol
+findSymbols
   :: SDL.Renderer
   -> Font.Font
-  -> IORef (Map (Color, Char) SDL.Texture)
+  -> Int
+  -> IORef (Map Color SDL.Texture)
   -> Color
   -> Char
   -> IO (Maybe (SDL.Texture, Int, Int))
-findSymbol renderer font ref color ch = do
+findSymbols renderer font width ref color ch = do
+  let width' = width `div` 2
   fontMap <- readIORef ref
-  case lookupMap (color, ch) fontMap of
-    Just tex -> return $ Just (tex, 0, 0)
-    Nothing -> do
-      mSym <- loadSymbol renderer font color ch
-      case mSym of
-        Nothing -> return Nothing
-        Just sym -> do
-          modifyIORef ref (insert (color, ch) sym)
-          return $ Just (sym, 0, 0)
-          
+  case lookupMap color fontMap of
+    Just tex -> case lookupMap ch offsets of
+      Nothing -> return Nothing
+      Just off -> return $ Just (tex, off * width', width')
+    Nothing -> case lookupMap ch offsets of
+      Nothing -> return Nothing
+      Just off -> do
+        sym <- loadSymbols renderer font color
+        modifyIORef ref (insert color sym)
+        return $ Just (sym, off * width', width')
+  where
+    offsets = Map.fromList $ zip symbolList [0..]
 
 playSfxs :: Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
 playSfxs achievement gong sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
