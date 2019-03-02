@@ -426,7 +426,7 @@ drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Ti
     Just shape' -> drawShape (fromMaybe bgColor fill) renderer tileSize (x,y) shape'
   case symbol of
     Nothing -> return ()
-    Just (symbol', color) -> drawSymbol renderer fontMap symbol' color tileSize (x,y)
+    Just (symbol', color) -> drawSymbol' renderer fontMap symbol' color tileSize (x,y)
 
 
 drawFill :: SDL.Renderer -> Int -> (Int, Int) -> Maybe Color -> IO ()
@@ -561,26 +561,6 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
     center = (\n -> floor (num (n * tileSize) + halfTile)) <$> V2 x y
     radius = floor $ halfTile * 0.8
     color' = colorPixel color
-
-drawSymbol :: SDL.Renderer -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Char -> Color -> Int -> (Int, Int) -> IO ()
-drawSymbol renderer fontMap ch color tileSize (x,y) = do
-  m <- fontMap color ch
-  case m of
-    Nothing -> return ()
-    Just (tex, offsetX, offsetY) -> do
-      SDL.TextureInfo{SDL.textureWidth=width,SDL.textureHeight=height} <- SDL.queryTexture tex
-      let wh = V2 width height
-      let wh2 = V2 (div width 2) (div height 2)
-      let offset = fromIntegral <$> V2 offsetX offsetY
-      let xy' = xy + center - wh2 - offset
-      SDL.copy
-        renderer
-        tex
-        Nothing
-        (Just $ SDL.Rectangle (SDL.P xy') wh)
-  where
-    xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
-    center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
 
 drawSymbol' :: SDL.Renderer -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Char -> Color -> Int -> (Int, Int) -> IO ()
 drawSymbol' renderer fontMap ch color tileSize (x,y) = do
