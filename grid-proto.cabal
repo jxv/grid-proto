@@ -2,10 +2,12 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7521059dc5b5640822926c1f0aea72c36fcbba4eaca65ea08b567461bffa96a4
+-- hash: a6ce331d557b16322facf9baf7128cd40495d672089bc7d6564bdb46e469eb07
 
 name:           grid-proto
 version:        0.1.0.0
+synopsis:       Grid-based prototyping framework
+description:    Grid-based prototyping framework. Useful for games.
 category:       Game
 homepage:       https://github.com/jxv/grid-proto#readme
 author:         Joe Vargas

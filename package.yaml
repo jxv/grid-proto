@@ -1,7 +1,7 @@
 name:                grid-proto
 version:             0.1.0.0
-#synopsis:
-#description:
+synopsis:            Grid-based prototyping framework
+description:         Grid-based prototyping framework. Useful for games.
 homepage:            https://github.com/jxv/grid-proto#readme
 license:             BSD3
 author:              Joe Vargas
