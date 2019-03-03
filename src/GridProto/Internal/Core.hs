@@ -405,6 +405,7 @@ keyFromKeyCode = \case
   KeycodeComma -> Just $ Char ','
   KeycodePeriod -> Just $ Char '.'
   KeycodeSlash -> Just $ Char '/'
+  KeycodeSpace -> Just $ Char ' '
   --
   _ -> Nothing
 
