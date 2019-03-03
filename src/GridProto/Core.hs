@@ -33,6 +33,7 @@ module GridProto.Core
   , rainbow
   , colorValue
   , sdlColor
+  , colorWheel0, colorWheel1, colorWheel2
   ) where
 
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)

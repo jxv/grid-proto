@@ -72,7 +72,7 @@ runClassic Classic
   SDL.initialize [SDL.InitVideo, SDL.InitAudio, SDL.InitGameController]
   Font.initialize
   Mixer.openAudio Mixer.defaultAudio 256
-  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ rows * tilePixelSize) (num $ cols * tilePixelSize) }
+  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ cols * tilePixelSize) (num $ rows * tilePixelSize) }
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   numJoysticks <- SDL.numJoysticks
   joystickDevices <- SDL.availableJoysticks
@@ -101,7 +101,7 @@ runClassic Classic
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
     let (V2 mouseX mouseY) = num <$> mousePos
-    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows, cols)
+    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (cols, rows)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
     let input' = makeInput input mouseTilePos mouseClick eventPayloads

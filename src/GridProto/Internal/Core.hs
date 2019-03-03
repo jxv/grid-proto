@@ -691,7 +691,7 @@ toTexture renderer surface = do
   return texture
 
 placeTile :: (Int, Int) -> Tile -> Map (Int, Int) Tile -> Map (Int, Int) Tile
-placeTile xy tile m = Map.insertWith (<>) xy tile m
+placeTile xy tile m = Map.insertWith (flip (<>)) xy tile m
 
 placeTilesAt
   :: Map (Int, Int) Tile -- | Base tiles
@@ -747,3 +747,13 @@ playSfxs :: Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
 playSfxs achievement gong sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
   Achievement -> Mixer.playOn 0 1 achievement
   Gong -> Mixer.playOn 0 2 gong
+
+colorWheel0 :: [Color]
+colorWheel0 = [Red0, Orange0, Yellow0, Chartreuse0, Green0, Spring0, Cyan0, Azure0, Blue0, Violet0, Magenta0, Rose0]
+
+colorWheel1 :: [Color]
+colorWheel1 = [Red1, Orange1, Yellow1, Chartreuse1, Green1, Spring1, Cyan1, Azure1, Blue1, Violet1, Magenta1, Rose1]
+
+colorWheel2 :: [Color]
+colorWheel2 = [Red2, Orange2, Yellow2, Chartreuse2, Green2, Spring2, Cyan2, Azure2, Blue2, Violet2, Magenta2, Rose2]
+
