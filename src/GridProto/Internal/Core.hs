@@ -748,8 +748,8 @@ findSymbols renderer font width ref color ch = do
 playSfxs :: Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
 playSfxs achievement gong door sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
   SfxAchievement -> Mixer.playOn 0 1 achievement
-  SfxGong -> Mixer.playOn 0 2 gong
-  SfxDoor -> Mixer.playOn 0 3 door
+  SfxGong -> Mixer.playOn 0 1 gong
+  SfxDoor -> Mixer.playOn 0 1 door
 
 colorWheel0 :: [Color]
 colorWheel0 = [Red0, Orange0, Yellow0, Chartreuse0, Green0, Spring0, Cyan0, Azure0, Blue0, Violet0, Magenta0, Rose0]
