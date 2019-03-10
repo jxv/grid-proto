@@ -40,6 +40,7 @@ import GridProto.Internal.Core
 import GridProto.Internal.Font
 import GridProto.Internal.SfxAchievement
 import GridProto.Internal.SfxGong
+import GridProto.Internal.SfxDoor
 
 data Classic s = Classic
   { title :: String
@@ -83,6 +84,7 @@ runClassic Classic
   --
   achievement <- Mixer.decode sfxAchievementData
   gong <- Mixer.decode sfxGongData
+  door <- Mixer.decode sfxDoorData
   --
   (font, fontSize) <- loadFont renderer tilePixelSize
   fontColorMapRef <- newFontColorMap
@@ -114,7 +116,7 @@ runClassic Classic
         SDL.rendererDrawColor renderer $= sdlColor backgroundColor
         SDL.clear renderer
         drawTileMap backgroundColor renderer tilePixelSize findSymbols' tileMap
-        playSfxs achievement gong sfxs
+        playSfxs achievement gong door sfxs
         SDL.present renderer
         performGC
         endFrame 60 ticks
@@ -122,6 +124,9 @@ runClassic Classic
   mapM_ Event.gameControllerClose gameControllers
   Font.free font
   SDL.destroyWindow window
+  Mixer.free achievement
+  Mixer.free gong 
+  Mixer.free door
   Mixer.quit
   Font.quit
   SDL.quit

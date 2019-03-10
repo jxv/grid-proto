@@ -70,4 +70,13 @@ executables:
     main: Main.hs
     dependencies:
       - grid-proto
+  sound-example:
+    when:
+      condition: flag(examples)
+      buildable: true
+    source-dirs: examples/sound
+    main: Main.hs
+    dependencies:
+      - grid-proto
+
 
