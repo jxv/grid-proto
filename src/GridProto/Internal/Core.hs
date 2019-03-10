@@ -238,6 +238,7 @@ data Sfx
   = SfxAchievement
   | SfxGong
   | SfxDoor
+  | SfxDamage
   deriving (Show, Eq)
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
@@ -745,11 +746,12 @@ findSymbols renderer font width ref color ch = do
   where
     offsets = Map.fromList $ zip symbolList [0..]
 
-playSfxs :: Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
-playSfxs achievement gong door sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
+playSfxs :: Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
+playSfxs achievement gong door damage sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
   SfxAchievement -> Mixer.playOn 0 1 achievement
   SfxGong -> Mixer.playOn 0 1 gong
   SfxDoor -> Mixer.playOn 0 1 door
+  SfxDamage -> Mixer.playOn 0 1 damage
 
 colorWheel0 :: [Color]
 colorWheel0 = [Red0, Orange0, Yellow0, Chartreuse0, Green0, Spring0, Cyan0, Azure0, Blue0, Violet0, Magenta0, Rose0]
