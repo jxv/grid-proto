@@ -23,13 +23,14 @@ classic = Classic
   }
 
 update :: Input -> [Sfx] -> IO [Sfx]
-update Input{keys=keys} _ = return $ catMaybes [achievement, gong, door]
+update Input{keys=keys} _ = return $ catMaybes [achievement, gong, door, damage]
   where
     isPressed c = lookupKey keys (Char c) == Pressed
     chooseSound c sfx = if isPressed c then Just sfx else Nothing
     achievement = chooseSound '1' SfxAchievement
     gong = chooseSound '2' SfxGong
     door = chooseSound '3' SfxDoor
+    damage = chooseSound '4' SfxDamage
 
 tileMap :: [Sfx] -> Map (Int, Int) Tile
 tileMap _ = fromList []
