@@ -27,9 +27,9 @@ update Input{keys=keys} _ = return $ catMaybes [achievement, gong, door]
   where
     isPressed c = lookupKey keys (Char c) == Pressed
     chooseSound c sfx = if isPressed c then Just sfx else Nothing
-    achievement = chooseSound '1' Achievement
-    gong = chooseSound '2' Gong
-    door = chooseSound '3' Door 
+    achievement = chooseSound '1' SfxAchievement
+    gong = chooseSound '2' SfxGong
+    door = chooseSound '3' SfxDoor
 
 tileMap :: [Sfx] -> Map (Int, Int) Tile
 tileMap _ = fromList []
