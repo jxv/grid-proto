@@ -78,5 +78,13 @@ executables:
     main: Main.hs
     dependencies:
       - grid-proto
+  tactics:
+    when:
+      condition: flag(examples)
+      buildable: true
+    source-dirs: examples/tactics
+    main: Main.hs
+    dependencies:
+      - grid-proto
 
 

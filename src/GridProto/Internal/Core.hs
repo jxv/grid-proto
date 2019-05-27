@@ -212,6 +212,7 @@ data Input = Input
   , controller2 :: Controller
   , controller3 :: Controller
   , controller4 :: Controller
+  , ticks :: Int
   } deriving (Show, Eq, Generic)
 
 instance ToJSON Input
@@ -251,7 +252,7 @@ lookupKey :: Keys -> Key -> KeyState
 lookupKey (Keys m) k = fromMaybe Untouched (Map.lookup k m)
 
 makeInput :: Input -> Maybe (Int, Int) -> Bool -> [SDL.EventPayload] -> Input
-makeInput Input{mouse,keys,controller1,controller2,controller3,controller4} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller1' controller2' controller3' controller4'
+makeInput Input{mouse,keys,controller1,controller2,controller3,controller4} mpos' mclick eventPayloads = Input m (Keys $ nextKeys $ unKeys keys) controller1' controller2' controller3' controller4' 0
   where
     mpos = fromMaybe (mousePosition mouse) mpos'
     mbutton
@@ -685,7 +686,7 @@ tileByMousePosition tileSize (mx,my) (r,c)
   | otherwise = Just (mx `div` tileSize, my `div` tileSize)
 
 symbolList :: [Char]
-symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?"
+symbolList = "`1234567890-=~!@#$%^&*()_+qwertyuiop[]\\QWERTYUIOP{}|asdfghjkl;'ASDFGHJKL:\"zxcvbnm,./ZXCVBNM<>?┗┓┏┛"
 
 toTexture :: SDL.Renderer -> SDL.Surface -> IO SDL.Texture
 toTexture renderer surface = do

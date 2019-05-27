@@ -71,7 +71,7 @@ runClassic Classic
   , quitFn
   }
   = do
-  SDL.initialize [SDL.InitVideo, SDL.InitAudio, SDL.InitGameController]
+  SDL.initialize [SDL.InitVideo, SDL.InitAudio, SDL.InitGameController, SDL.InitJoystick]
   Font.initialize
   Mixer.openAudio Mixer.defaultAudio 256
   window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ cols * tilePixelSize) (num $ rows * tilePixelSize) }
@@ -99,16 +99,17 @@ runClassic Classic
         initController { isConnected = elem 1 gameControllerIds }
         initController { isConnected = elem 2 gameControllerIds }
         initController { isConnected = elem 3 gameControllerIds }
+        0
   ($ (initialState, initInput)) $ fix $ \loop (state, input) -> do
-    ticks <- startFrame
+    frameTicks <- startFrame
     let quit = quitFn state
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
     let (V2 mouseX mouseY) = num <$> mousePos
-    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (cols, rows)
+    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows,cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
-    let input' = makeInput input mouseTilePos mouseClick eventPayloads
+    let input' = (makeInput input mouseTilePos mouseClick eventPayloads) { ticks = (ticks input + 1) `mod` framesPerSecond }
     if quit || elem SDL.QuitEvent eventPayloads
       then return ()
       else do
@@ -121,7 +122,7 @@ runClassic Classic
         playSfxs achievement gong door damage sfxs
         SDL.present renderer
         performGC
-        endFrame 60 ticks
+        endFrame framesPerSecond frameTicks
         loop (state', input')
   mapM_ Event.gameControllerClose gameControllers
   Font.free font
@@ -133,4 +134,6 @@ runClassic Classic
   Mixer.quit
   Font.quit
   SDL.quit
+  where
+    framesPerSecond = 60
 

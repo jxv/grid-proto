@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 81cc1559d19465fd0df2ae5a6c3653c3bc6061d14266b5b4eacae8c72e838212
+-- hash: 594e25cde9b2f92e2d7ed58cac2234a92444c3bebe4ee8fc724bd5145b8702f7
 
 name:           grid-proto
 version:        0.1.0.0
@@ -16,7 +18,6 @@ copyright:      2019 Joe Vargas
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
     README.md
 
@@ -135,6 +136,31 @@ executable sound-example
       Paths_grid_proto
   hs-source-dirs:
       examples/sound
+  build-depends:
+      StateVar
+    , aeson >=1.4
+    , base >=4.7 && <5
+    , bytestring
+    , containers >=0.6
+    , grid-proto
+    , linear
+    , sdl2 >=2.4.0
+    , sdl2-fps
+    , sdl2-gfx
+    , sdl2-mixer
+    , sdl2-ttf
+    , text >=1.2.3
+    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable tactics
+  main-is: Main.hs
+  other-modules:
+      Paths_grid_proto
+  hs-source-dirs:
+      examples/tactics
   build-depends:
       StateVar
     , aeson >=1.4
