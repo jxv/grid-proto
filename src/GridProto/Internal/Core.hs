@@ -3,14 +3,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE TypeSynonymInstances #-} -- instance MapTile View
+{-# LANGUAGE FlexibleInstances #-} -- instance MapTile View
 module GridProto.Internal.Core where
 
 import Prelude hiding (lookup)
 import GHC.Generics (Generic)
 import Control.Applicative ((<|>))
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad (when)
 import Data.Traversable (forM)
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Types (FromJSONKey, ToJSONKey)
 import Data.Function (fix)
 import Data.Foldable (forM_)
 import Data.IORef (IORef, newIORef, readIORef, modifyIORef)
@@ -19,7 +22,7 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Semigroup (Semigroup(..))
 import Data.Text (pack)
-import Data.Word (Word8)
+import Data.Word (Word8, Word32)
 import Data.Int (Int16)
 import Linear.V2 (V2(..))
 import Linear.V4 (V4(..))
@@ -28,6 +31,7 @@ import SDL.Input.GameController (ControllerButton(..), ControllerButtonState(..)
 import GridProto.Internal.Font
 
 import qualified Data.Map as Map
+import qualified Data.List as L
 import qualified Data.Vector.Storable as VS
 import qualified SDL
 import qualified SDL.Raw.Event as Raw
@@ -86,9 +90,6 @@ data Color
   | Black2
   deriving (Enum, Eq, Bounded, Ord, Show, Generic)
 
-instance ToJSON Color
-instance FromJSON Color
-
 data Shape
   = Circle
   | FillCircle
@@ -102,16 +103,10 @@ data Shape
   | Cross
   deriving (Enum, Eq, Bounded, Show, Generic)
 
-instance ToJSON Shape
-instance FromJSON Shape
-
 data Mouse = Mouse
   { mousePosition :: (Int, Int)
   , mouseButton :: KeyState
   } deriving (Show, Eq, Generic)
-
-instance ToJSON Mouse
-instance FromJSON Mouse
 
 data Key
   = Char Char
@@ -132,12 +127,6 @@ data Key
   | Meta
   deriving (Eq, Show, Ord, Generic)
 
-instance ToJSON Key
-instance FromJSON Key
-
-instance ToJSONKey Key
-instance FromJSONKey Key
-
 data KeyState
   = Pressed
   | Held
@@ -145,22 +134,13 @@ data KeyState
   | Untouched
   deriving (Enum, Eq, Bounded, Show, Generic)
 
-instance ToJSON KeyState
-instance FromJSON KeyState
-
 newtype Keys = Keys { unKeys :: Map Key KeyState }
   deriving (Show, Eq, Generic)
-
-instance ToJSON Keys
-instance FromJSON Keys
 
 data Axis = Axis
   { xAxis :: Float
   , yAxis :: Float
   } deriving (Show, Eq, Generic)
-
-instance ToJSON Axis
-instance FromJSON Axis
 
 data Controller = Controller
   { isConnected :: Bool
@@ -202,9 +182,6 @@ initController = Controller
   (Axis 0 0)
   (Axis 0 0)
 
-instance ToJSON Controller
-instance FromJSON Controller
-
 data Input = Input
   { mouse :: Mouse
   , keys :: Keys
@@ -214,17 +191,11 @@ data Input = Input
   , controller4 :: Controller
   } deriving (Show, Eq, Generic)
 
-instance ToJSON Input
-instance FromJSON Input
-
 data Tile = Tile
   { symbol :: Maybe (Char, Color)
   , shape :: Maybe (Shape, Color)
   , fill :: Maybe Color
   } deriving (Show, Eq, Generic)
-
-instance ToJSON Tile
-instance FromJSON Tile
 
 instance Semigroup Tile where
   (<>) (Tile aSymbol aShape aFill) (Tile bSymbol bShape bFill) = case bFill of
@@ -234,12 +205,48 @@ instance Semigroup Tile where
 instance Monoid Tile where
   mempty = Tile Nothing Nothing Nothing
 
-data Sfx
-  = SfxAchievement
-  | SfxGong
-  | SfxDoor
-  | SfxDamage
-  deriving (Show, Eq)
+type View = Map (Int, Int) Tile
+
+
+data Viewport = Viewport
+  { vpView :: View
+  , vpXY :: (Int, Int)
+  , vpDim :: (Int, Int)
+  } deriving (Show, Eq, Generic)
+
+type Viewports = [Viewport]
+
+class MapTile a where
+  mapTile
+    :: ((Char, Color) -> (Char, Color))
+    -> ((Shape, Color) -> (Shape, Color))
+    -> (Color -> Color)
+    -> a
+    -> a
+  --
+  mapSymbol :: ((Char, Color) -> (Char, Color)) -> a -> a
+  mapSymbol f = mapTile f id id
+  --
+  mapShape :: ((Shape, Color) -> (Shape, Color)) -> a -> a
+  mapShape f = mapTile id f id
+  --
+  mapFill :: (Color -> Color) -> a -> a
+  mapFill f = mapTile id id f
+
+instance MapTile Tile where
+  mapTile symbolFn shapeFn fillFn tile = Tile
+    (symbolFn <$> symbol tile)
+    (shapeFn <$> shape tile)
+    (fillFn <$> fill tile)
+
+emptyView :: View
+emptyView = Map.fromList []
+
+instance MapTile View where
+  mapTile symbolFn shapeFn fillFn = fmap (mapTile symbolFn shapeFn fillFn)
+
+instance MapTile Viewport where
+  mapTile symbolFn shapeFn fillFn vp = vp { vpView = mapTile symbolFn shapeFn fillFn (vpView vp) }
 
 lookupMap :: Ord k => k -> Map k a -> Maybe a
 lookupMap = Map.lookup
@@ -357,33 +364,33 @@ keyFromKeyCode = \case
   KeycodeBackspace -> Just Backspace
   KeycodeLGUI -> Just Meta
   KeycodeRGUI -> Just Meta
-  --  
+  --
   KeycodeA -> Just $ Char 'a'
-  KeycodeB -> Just $ Char 'b' 
+  KeycodeB -> Just $ Char 'b'
   KeycodeC -> Just $ Char 'c'
-  KeycodeD -> Just $ Char 'd' 
+  KeycodeD -> Just $ Char 'd'
   KeycodeE -> Just $ Char 'e'
-  KeycodeF -> Just $ Char 'f' 
+  KeycodeF -> Just $ Char 'f'
   KeycodeG -> Just $ Char 'g'
-  KeycodeH -> Just $ Char 'h' 
+  KeycodeH -> Just $ Char 'h'
   KeycodeI -> Just $ Char 'i'
-  KeycodeJ -> Just $ Char 'j' 
+  KeycodeJ -> Just $ Char 'j'
   KeycodeK -> Just $ Char 'k'
-  KeycodeL -> Just $ Char 'l' 
+  KeycodeL -> Just $ Char 'l'
   KeycodeM -> Just $ Char 'm'
-  KeycodeN -> Just $ Char 'n' 
+  KeycodeN -> Just $ Char 'n'
   KeycodeO -> Just $ Char 'o'
-  KeycodeP -> Just $ Char 'p' 
+  KeycodeP -> Just $ Char 'p'
   KeycodeQ -> Just $ Char 'q'
-  KeycodeR -> Just $ Char 'r' 
+  KeycodeR -> Just $ Char 'r'
   KeycodeS -> Just $ Char 's'
-  KeycodeT -> Just $ Char 't' 
+  KeycodeT -> Just $ Char 't'
   KeycodeU -> Just $ Char 'u'
-  KeycodeV -> Just $ Char 'v' 
+  KeycodeV -> Just $ Char 'v'
   KeycodeW -> Just $ Char 'w'
-  KeycodeX -> Just $ Char 'x' 
+  KeycodeX -> Just $ Char 'x'
   KeycodeY -> Just $ Char 'y'
-  KeycodeZ -> Just $ Char 'z' 
+  KeycodeZ -> Just $ Char 'z'
   --
   Keycode0 -> Just $ Char '0'
   Keycode1 -> Just $ Char '1'
@@ -421,7 +428,7 @@ keyChange event = case event of
     _ -> Nothing
 
 
-drawTileMap :: Color -> SDL.Renderer -> Int -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> Map (Int, Int) Tile -> IO ()
+drawTileMap :: Color -> SDL.Renderer -> Int -> (Color -> Char -> IO (Maybe (SDL.Texture, Int, Int))) -> View -> IO ()
 drawTileMap bgColor renderer tileSize fontMap m = forM_ (toList m) $ \((x,y), Tile{symbol,shape,fill}) -> do
   drawFill renderer tileSize (x,y) fill
   case shape of
@@ -455,21 +462,24 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
   FillCircle -> Gfx.fillCircle renderer center radius color'
   --
   Triangle -> do
-    let (dax, day) = triDA
-        (dbx, dby) = triDB
-        (dcx, dcy) = triDC
-        ax = x * tileSize + dax
-        ay = y * tileSize + day
-        bx = x * tileSize + dbx
-        by = y * tileSize + dby
-        cx = x * tileSize + dcx
-        cy = y * tileSize + dcy
-        a = num <$> V2 ax ay
-        b = num <$> V2 bx by
-        c = num <$> V2 cx cy
-    Gfx.thickLine renderer a b thickness' color'
-    Gfx.thickLine renderer b c thickness' color'
-    Gfx.thickLine renderer c a thickness' color'
+    let drawTri a b c co = do
+          let (dax, day) = a
+              (dbx, dby) = b
+              (dcx, dcy) = c
+              ax = x * tileSize + dax
+              ay = y * tileSize + day
+              bx = x * tileSize + dbx
+              by = y * tileSize + dby
+              cx = x * tileSize + dcx
+              cy = y * tileSize + dcy
+          Gfx.fillTriangle
+            renderer
+            (V2 (num ax) (num ay))
+            (V2 (num bx) (num by))
+            (V2 (num cx) (num cy))
+            (colorPixel co)
+    drawTri triDA  triDB  triDC  color
+    drawTri triDA' triDB' triDC' bgColor
   --
   FillTriangle -> do
     let (dax, day) = triDA
@@ -489,15 +499,18 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
       (colorPixel color)
   --
   Square -> do
-    let fx0 = x * tileSize + thickness
-        fx1 = (x + 1) * tileSize - thickness
-        fy0 = y * tileSize + thickness
-        fy1 = (y + 1) * tileSize - thickness
-    Gfx.rectangle
-      renderer
-      (V2 (num fx0) (num fy0))
-      (V2 (num fx1) (num fy1))
-      (colorPixel color)
+    let drawSquare thk co = do
+          let fx0 = x * tileSize + thk
+              fx1 = (x + 1) * tileSize - thk
+              fy0 = y * tileSize + thk
+              fy1 = (y + 1) * tileSize - thk
+          Gfx.fillRectangle
+            renderer
+            (V2 (num fx0) (num fy0))
+            (V2 (num fx1) (num fy1))
+            (colorPixel co)
+    drawSquare thickness color
+    drawSquare (thickness * 2) bgColor
   --
   FillSquare -> do
     let fx0 = x * tileSize + thickness
@@ -548,19 +561,27 @@ drawShape bgColor renderer tileSize (x,y) (shape,color) = case shape of
     thickness' :: Num a => a
     thickness' = num thickness
     thickness :: Int
-    thickness = max (tileSize `div` 8) 1
+    thickness = max (tileSize `div` 12) 1
+    --
     triAAngle = pi / 2
     triBAngle = 2 * pi / 3 + pi / 2
     triCAngle = 2 * 2 * pi / 3 + pi / 2
     halfTile = fromIntegral tileSize / 2
     halfTile' = tileSize `div` 2
-    triCorner angle =
-      ( floor $ (halfTile * cos angle) + halfTile
-      , floor $ negate (halfTile * sin angle) + halfTile + fromIntegral tileSize * 0.1
+    triCorner angle radius =
+      ( floor $ (radius * cos angle) + halfTile
+      , floor $ negate (radius * sin angle) + halfTile + fromIntegral tileSize * 0.1
       )
-    triDA = triCorner triAAngle
-    triDB = triCorner triBAngle
-    triDC = triCorner triCAngle
+    --
+    triDA  = triCorner triAAngle halfTile
+    triDB  = triCorner triBAngle halfTile
+    triDC  = triCorner triCAngle halfTile
+    --
+    innerHalf = halfTile - fromIntegral thickness * 2
+    triDA' = triCorner triAAngle innerHalf
+    triDB' = triCorner triBAngle innerHalf
+    triDC' = triCorner triCAngle innerHalf
+    --
     center = (\n -> floor (num (n * tileSize) + halfTile)) <$> V2 x y
     radius = floor $ halfTile * 0.8
     color' = colorPixel color
@@ -578,12 +599,12 @@ drawSymbol renderer fontMap ch color tileSize (x,y) = do
       SDL.copy
         renderer
         tex
-        (Just $ SDL.Rectangle (SDL.P (fromIntegral <$> V2 offsetX 0)) (V2 (fromIntegral offsetWidth) texHeight)) 
+        (Just $ SDL.Rectangle (SDL.P (fromIntegral <$> V2 offsetX 0)) (V2 (fromIntegral offsetWidth) texHeight))
         (Just $ SDL.Rectangle (SDL.P xy') wh)
   where
     xy = fromIntegral <$> V2 (tileSize * x) (tileSize * y)
     center = fromIntegral <$> V2 (tileSize `div` 2) (tileSize `div` 2)
-    
+
 colorPixel :: Color -> Gfx.Color
 colorPixel c = bgr (colorValue c)
 
@@ -638,10 +659,112 @@ colorValue Gray1       = (0x80, 0x80, 0x80)
 colorValue Gray2       = (0xa9, 0xa9, 0xa9)
 colorValue White0      = (0xff, 0xff, 0xf0)
 colorValue White1      = (0xff, 0xff, 0xff)
-colorValue White2      = (0xf0, 0xff, 0xff) 
+colorValue White2      = (0xf0, 0xff, 0xff)
 colorValue Black0      = (0x10, 0x00, 0x00)
 colorValue Black1      = (0x00, 0x00, 0x00)
 colorValue Black2      = (0x00, 0x10, 0x10)
+
+shade :: Color -> Color
+shade c = case c of
+  Red0 -> Red1
+  Red1 -> Red2
+  Red2 -> Red2
+  Orange0 -> Orange1
+  Orange1 -> Orange2
+  Orange2 -> Orange2
+  Yellow0 -> Yellow1
+  Yellow1 -> Yellow2
+  Yellow2 -> Yellow2
+  Chartreuse0 -> Chartreuse1
+  Chartreuse1 -> Chartreuse2
+  Chartreuse2 -> Chartreuse2
+  Green0 -> Green1
+  Green1 -> Green2
+  Green2 -> Green2
+  Spring0 -> Spring1
+  Spring1 -> Spring2
+  Spring2 -> Spring2
+  Cyan0 -> Cyan1
+  Cyan1 -> Cyan2
+  Cyan2 -> Cyan2
+  Azure0 -> Azure1
+  Azure1 -> Azure2
+  Azure2 -> Azure2
+  Blue0 -> Blue1
+  Blue1 -> Blue2
+  Blue2 -> Blue2
+  Violet0 -> Violet1
+  Violet1 -> Violet2
+  Violet2 -> Violet2
+  Magenta0 -> Magenta1
+  Magenta1 -> Magenta2
+  Magenta2 -> Magenta2
+  Rose0 -> Rose1
+  Rose1 -> Rose2
+  Rose2 -> Rose2
+  Brown0 -> Brown1
+  Brown1 -> Brown2
+  Brown2 -> Brown2
+  Gray0 -> Gray1
+  Gray1 -> Gray2
+  Gray2 -> Gray2
+  White0 -> White1
+  White1 -> White2
+  White2 -> White2
+  Black0 -> Black1
+  Black1 -> Black2
+  Black2 -> Black2
+
+tint :: Color -> Color
+tint c = case c of
+  Red0 -> Red0
+  Red1 -> Red0
+  Red2 -> Red1
+  Orange0 -> Orange0
+  Orange1 -> Orange0
+  Orange2 -> Orange1
+  Yellow0 -> Yellow0
+  Yellow1 -> Yellow0
+  Yellow2 -> Yellow1
+  Chartreuse0 -> Chartreuse0
+  Chartreuse1 -> Chartreuse0
+  Chartreuse2 -> Chartreuse1
+  Green0 -> Green0
+  Green1 -> Green0
+  Green2 -> Green1
+  Spring0 -> Spring0
+  Spring1 -> Spring0
+  Spring2 -> Spring1
+  Cyan0 -> Cyan0
+  Cyan1 -> Cyan0
+  Cyan2 -> Cyan1
+  Azure0 -> Azure0
+  Azure1 -> Azure0
+  Azure2 -> Azure1
+  Blue0 -> Blue0
+  Blue1 -> Blue0
+  Blue2 -> Blue1
+  Violet0 -> Violet0
+  Violet1 -> Violet0
+  Violet2 -> Violet1
+  Magenta0 -> Magenta0
+  Magenta1 -> Magenta0
+  Magenta2 -> Magenta1
+  Rose0 -> Rose0
+  Rose1 -> Rose0
+  Rose2 -> Rose1
+  Brown0 -> Brown0
+  Brown1 -> Brown0
+  Brown2 -> Brown1
+  Gray0 -> Gray0
+  Gray1 -> Gray0
+  Gray2 -> Gray1
+  White0 -> White0
+  White1 -> White0
+  White2 -> White1
+  Black0 -> Black0
+  Black1 -> Black0
+  Black2 -> Black1
 
 rd0, rd1, rd2,
   or0, or1, or2,
@@ -679,6 +802,12 @@ rd0, rd1, rd2,
 rainbow :: [Color]
 rainbow = [rd1, or1, yw1, ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1, rs1]
 
+warms :: [Color]
+warms = [rd1, or1, yw1, rs1]
+
+cools :: [Color]
+cools = [ch1, gn1, sp1, cn1, az1, bu1, vt1, mg1]
+
 tileByMousePosition :: Int -> (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
 tileByMousePosition tileSize (mx,my) (r,c)
   | mx < 0 || my < 0 || mx >= tileSize * c || my >= tileSize * r = Nothing
@@ -693,21 +822,35 @@ toTexture renderer surface = do
   SDL.freeSurface surface
   return texture
 
-placeTile :: (Int, Int) -> Tile -> Map (Int, Int) Tile -> Map (Int, Int) Tile
+placeTile :: (Int, Int) -> Tile -> View -> View
 placeTile xy tile m = Map.insertWith (flip (<>)) xy tile m
 
 placeTilesAt
-  :: Map (Int, Int) Tile -- | Base tiles
+  :: View -- | Base tiles
   -> (Int, Int)          -- | Offset
-  -> Map (Int, Int) Tile -- | Tiles to be placed
-  -> Map (Int, Int) Tile
+  -> View -- | Tiles to be placed
+  -> View
 placeTilesAt old (x,y) new = foldr (\((x',y'), tile) m' -> placeTile (x+x', y+y') tile m') old (Map.toList new)
 
 mergeTiles
-  :: Map (Int, Int) Tile -- | Base tiles
-  -> Map (Int, Int) Tile -- | Tiles to be placed
-  -> Map (Int, Int) Tile
+  :: View -- | Base tiles
+  -> View -- | Tiles to be placed
+  -> View
 mergeTiles old new = placeTilesAt old (0,0) new
+
+mergeViewport
+  :: View
+  -> Viewport
+  -> View
+mergeViewport old vp = placeTilesAt old (vpXY vp) (Map.filterWithKey (\(x,y) _ -> x < w && y < h) (vpView vp))
+  where
+    (w,h) = vpDim vp
+
+mergeViewports
+  :: View
+  -> Viewports
+  -> View
+mergeViewports = L.foldl' mergeViewport
 
 loadFont :: SDL.Renderer -> Int -> IO (Font.Font, Int)
 loadFont renderer tileSize = (,) <$> Font.decode fontData size <*> pure size
@@ -746,13 +889,6 @@ findSymbols renderer font width ref color ch = do
   where
     offsets = Map.fromList $ zip symbolList [0..]
 
-playSfxs :: Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> Mixer.Chunk -> [Sfx] -> IO ()
-playSfxs achievement gong door damage sfxs = flip mapM_ sfxs $ \sfx -> case sfx of
-  SfxAchievement -> Mixer.playOn 0 1 achievement
-  SfxGong -> Mixer.playOn 0 1 gong
-  SfxDoor -> Mixer.playOn 0 1 door
-  SfxDamage -> Mixer.playOn 0 1 damage
-
 colorWheel0 :: [Color]
 colorWheel0 = [Red0, Orange0, Yellow0, Chartreuse0, Green0, Spring0, Cyan0, Azure0, Blue0, Violet0, Magenta0, Rose0]
 
@@ -762,3 +898,39 @@ colorWheel1 = [Red1, Orange1, Yellow1, Chartreuse1, Green1, Spring1, Cyan1, Azur
 colorWheel2 :: [Color]
 colorWheel2 = [Red2, Orange2, Yellow2, Chartreuse2, Green2, Spring2, Cyan2, Azure2, Blue2, Violet2, Magenta2, Rose2]
 
+class Monad m => FPS m where
+  startFrame :: m Word32
+  default startFrame :: MonadIO m => m Word32
+  startFrame = liftIO SDL.ticks
+
+  endFrame :: Int -> Word32 -> m ()
+  default endFrame :: MonadIO m => Int -> Word32 -> m ()
+  endFrame = endFrame'
+
+instance FPS IO
+
+-- | `endFrame`'s default definition
+endFrame' :: MonadIO m => Int -> Word32 -> m ()
+endFrame' fps startTicks = liftIO $ do
+  endTicks <- SDL.ticks
+  let diff = (endTicks - startTicks) * fps'
+  when (msps > diff) $ do
+    let ms = (msps - diff) `div` fps'
+    SDL.delay (fromIntegral ms)
+  where
+    fps' = fromIntegral fps
+
+-- | Same as default definition and prints fps and delay
+endFrameDebug :: MonadIO m => Int -> Word32 -> m ()
+endFrameDebug fps startTicks = liftIO $ do
+  endTicks <- SDL.ticks
+  let diff = (endTicks - startTicks) * fps'
+  let ms = (msps - diff) `div` fps'
+  when (msps > diff) $ SDL.delay (fromIntegral ms)
+  putStrLn $ show fps ++ " fps - before delay " ++ show (endTicks - startTicks) ++ " ms" ++ " with expected max " ++ show (msps `div` fps') ++ " ms"
+  where
+    fps' = fromIntegral fps
+
+-- | Milliseconds per second
+msps :: Word32
+msps = 1000

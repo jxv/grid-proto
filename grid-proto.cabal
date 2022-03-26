@@ -1,21 +1,15 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
---
--- see: https://github.com/sol/hpack
---
--- hash: 81cc1559d19465fd0df2ae5a6c3653c3bc6061d14266b5b4eacae8c72e838212
-
-name:           grid-proto
-version:        0.1.0.0
-synopsis:       Grid-based prototyping framework
-description:    Grid-based prototyping framework. Useful for games.
-category:       Game
-homepage:       https://github.com/jxv/grid-proto#readme
-author:         Joe Vargas
-maintainer:     joevargas92@gmail.com
-copyright:      2019 Joe Vargas
-license:        BSD3
-license-file:   LICENSE
-build-type:     Simple
+name: grid-proto
+version: 0.2.0.0
+synopsis: Grid-based, prototyping Game engine
+description: Grid-based, prototyping Game engine
+category: Game
+homepage: https://github.com/jxv/grid-proto#readme
+author: Joe Vargas
+maintainer:
+copyright: 2022 Joe Vargas
+license: BSD3
+license-file: LICENSE
+build-type: Simple
 cabal-version:  >= 1.10
 extra-source-files:
     README.md
@@ -26,155 +20,103 @@ flag examples
 
 library
   exposed-modules:
-      GridProto.Core
-      GridProto.Classic
+      GridProto
   other-modules:
-      GridProto.Internal.Core
-      GridProto.Internal.Font
-      GridProto.Internal.SfxAchievement
-      GridProto.Internal.SfxDamage
-      GridProto.Internal.SfxDoor
-      GridProto.Internal.SfxGong
-      Paths_grid_proto
+    GridProto.Internal.Core
+    GridProto.Internal.Font
+    GridProto.Internal.Runner
+    GridProto.Internal.Sfx
+    GridProto.Internal.Sfx.Bell
+    GridProto.Internal.Sfx.Chimes
+    GridProto.Internal.Sfx.Damage
+    GridProto.Internal.Sfx.Explosion
+    GridProto.Internal.Sfx.Jump
+    GridProto.Internal.Sfx.Laser
+    GridProto.Internal.Sfx.NoSelect
+    GridProto.Internal.Sfx.Noise
+    GridProto.Internal.Sfx.PowerUp
+    GridProto.Internal.Sfx.Scroll
+    GridProto.Internal.Sfx.Select
+    GridProto.Internal.Sfx.Success
   hs-source-dirs:
       src
   build-depends:
       StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
+    , base
     , bytestring
-    , containers >=0.6
+    , cereal
+    , containers
     , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
+    , sdl2 == 2.5.3.2
     , sdl2-gfx
     , sdl2-mixer
     , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
+    , text
+    , vector
   default-language: Haskell2010
 
 executable arrows-example
-  main-is: Main.hs
-  other-modules:
-      Paths_grid_proto
-  hs-source-dirs:
-      examples/arrows
+  hs-source-dirs: examples
+  main-is: Arrows.hs
+  ghc-options: -main-is Arrows
   build-depends:
-      StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
-    , bytestring
-    , containers >=0.6
+      base
     , grid-proto
-    , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
-    , sdl2-gfx
-    , sdl2-mixer
-    , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
   if flag(examples)
     buildable: True
   default-language: Haskell2010
 
 executable board-example
-  main-is: Main.hs
-  other-modules:
-      Paths_grid_proto
-  hs-source-dirs:
-      examples/board
+  hs-source-dirs: examples
+  main-is: Board.hs
+  ghc-options: -main-is Board
   build-depends:
-      StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
-    , bytestring
-    , containers >=0.6
+      base
     , grid-proto
-    , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
-    , sdl2-gfx
-    , sdl2-mixer
-    , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
   if flag(examples)
     buildable: True
   default-language: Haskell2010
 
 executable controller-example
-  main-is: Main.hs
-  other-modules:
-      Paths_grid_proto
-  hs-source-dirs:
-      examples/controller
+  hs-source-dirs: examples
+  main-is: Controller.hs
+  ghc-options: -main-is Controller
   build-depends:
-      StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
-    , bytestring
-    , containers >=0.6
+      base
     , grid-proto
-    , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
-    , sdl2-gfx
-    , sdl2-mixer
-    , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
   if flag(examples)
     buildable: True
   default-language: Haskell2010
 
 executable sound-example
-  main-is: Main.hs
-  other-modules:
-      Paths_grid_proto
-  hs-source-dirs:
-      examples/sound
+  hs-source-dirs: examples
+  main-is: Sound.hs
+  ghc-options: -main-is Sound
   build-depends:
-      StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
-    , bytestring
-    , containers >=0.6
+      base
     , grid-proto
-    , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
-    , sdl2-gfx
-    , sdl2-mixer
-    , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
   if flag(examples)
     buildable: True
   default-language: Haskell2010
 
 executable text-example
-  main-is: Main.hs
-  other-modules:
-      Paths_grid_proto
-  hs-source-dirs:
-      examples/text
+  hs-source-dirs: examples
+  main-is: Text.hs
+  ghc-options: -main-is Text
   build-depends:
-      StateVar
-    , aeson >=1.4
-    , base >=4.7 && <5
-    , bytestring
-    , containers >=0.6
+      base
     , grid-proto
-    , linear
-    , sdl2 >=2.4.0
-    , sdl2-fps
-    , sdl2-gfx
-    , sdl2-mixer
-    , sdl2-ttf
-    , text >=1.2.3
-    , vector >=0.12
+  if flag(examples)
+    buildable: True
+  default-language: Haskell2010
+
+executable viewport-example
+  hs-source-dirs: examples
+  main-is: Viewport.hs
+  ghc-options: -main-is Viewport
+  build-depends:
+      base
+    , grid-proto
   if flag(examples)
     buildable: True
   default-language: Haskell2010
