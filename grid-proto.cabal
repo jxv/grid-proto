@@ -1,11 +1,12 @@
 name: grid-proto
 version: 0.2.0.0
-synopsis: Grid-based, prototyping Game engine
-description: Grid-based, prototyping Game engine
+synopsis: Game engine for Prototyping on a Grid
+description: Exposes a heavily constrained and simple API around SDL2 with builtin font and sound effects.
 category: Game
 homepage: https://github.com/jxv/grid-proto#readme
 author: Joe Vargas
-maintainer:
+maintainer: Joe Vargas
+bug-reports: https://github.com/jxv/grid-proto/issues
 copyright: 2022 Joe Vargas
 license: BSD3
 license-file: LICENSE
