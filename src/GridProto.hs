@@ -21,7 +21,7 @@ module GridProto
   , fromList, lookupMap, (!), delete, alter, insert, filterWithKey, member, notMember, toList
   , emptyView
   --
-  , drawTile, drawView, mergeViews
+  , drawTile, drawView, mergeView, mergeViews
   , mergeViewport, mergeViewports
   --
   , lookupKey

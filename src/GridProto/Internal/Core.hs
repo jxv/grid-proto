@@ -830,11 +830,16 @@ drawView
   -> View
 drawView old (x,y) new = foldr (\((x',y'), tile) m' -> drawTile m' (x+x', y+y') tile) old (Map.toList new)
 
-mergeViews
+mergeView
   :: View -- | Base view
   -> View -- | View to be placed
   -> View
-mergeViews old new = drawView old (0,0) new
+mergeView old new = drawView old (0,0) new
+
+mergeViews
+  :: [View] -- | views
+  -> View
+mergeViews views = foldl mergeView emptyView views
 
 mergeViewport
   :: View -- | Base view

@@ -97,7 +97,8 @@ drawString :: Color -> (Int, Int) -> String -> View
 drawTile :: View -> (Int, Int) -> Tile -> View
 
 drawView :: View -> (Int, Int) -> View -> View
-mergeViews :: View -> View -> View
+mergeView :: View -> View -> View
+mergeViews :: [View] -> View
 
 rainbow, warms, cools, colorWheel0, colorWheel1, colorWheel2 :: [Color]
 shade, tint :: Color -> Color
