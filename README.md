@@ -1,10 +1,10 @@
-# grid-proto
+# Grid Proto
 
 ### Game Engine for Prototyping on a Grid
 
-Immediately prototype a graphical program with basic input, colors, shapes, and text.
-Grid Proto follows an 'anti-polished' philosophy. It exposes a heavily limited API over SDL2 which doesn't allow for any media -- except for its builtin font and sound effects.
-*No images can be loaded or rendered.*
+Quickly prototype a graphical program with basic input, colors, shapes, and text.
+Grid Proto follows an 'anti-polished' philosophy. It exposes a heavily limited API over SDL2 which doesn't allow for any user media.
+*No images, fonts, or audio can be loaded.*
 This usage is one step above prototyping within the terminal. So, just write a function for updating state, a pure function for rendering, and a pure function for sound effects.
 
 ---
@@ -94,9 +94,9 @@ data Shape
   | Bar | Cross
 
 drawString :: Color -> (Int, Int) -> String -> View
-drawTile :: (Int, Int) -> Tile -> View -> View
+drawTile :: View -> (Int, Int) -> Tile -> View
 
-drawTilesAt :: View -> (Int, Int) -> View -> View
+drawView :: View -> (Int, Int) -> View -> View
 mergeViews :: View -> View -> View
 
 rainbow, warms, cools, colorWheel0, colorWheel1, colorWheel2 :: [Color]
@@ -112,8 +112,7 @@ mergeViewport :: View -> Viewport -> View
 mergeViewports :: View -> [Viewport] -> View
 
 -- instances of MapTile on Tile, View, Viewport
-mapTile
-  :: MapTile a
+mapTile :: MapTile a
   => ((Char, Color) -> (Char, Color)) -> ((Shape, Color) -> (Shape, Color))
   -> (Color -> Color) -> a -> a
 mapSymbol :: MapTile a => ((Char, Color) -> (Char, Color)) -> a -> a
@@ -125,19 +124,15 @@ mapFill :: MapTile a => (Color -> Color) -> a -> a
 --
 
 data Input = Input
-  { mouse :: Mouse
-  , keys :: Keys
-  , controller1 :: Controller
-  , controller2 :: Controller
-  , controller3 :: Controller
-  , controller4 :: Controller
+  { mouse :: Mouse, keys :: Keys
+  , controller1, controller2, controller3, controller4 :: Controller
   }
 
 data Key
   = Char Char
   | UpArrow | DownArrow | LeftArrow | RightArrow
   | Enter | Escape
-  | LeftShift  RightShift | LeftControl | RightControl
+  | LeftShift | RightShift | LeftControl | RightControl
   | LeftAlt | RightAlt
   | Tab | Backspace | Meta
 
@@ -151,22 +146,12 @@ data Mouse = Mouse { mousePosition :: (Int, Int), mouseButton :: KeyState }
 
 data Controller = Controller
   { isConnected :: Bool
-  , startButton :: KeyState
-  , backButton :: KeyState
-  , dpadUp :: KeyState
-  , dpadDown :: KeyState
-  , dpadLeft :: KeyState
-  , dpadRight :: KeyState
-  , aButton :: KeyState
-  , bButton :: KeyState
-  , xButton :: KeyState
-  , yButton :: KeyState
-  , leftStick :: KeyState
-  , rightStick :: KeyState
-  , leftShoulder :: KeyState
-  , rightShoulder :: KeyState
-  , leftAxis :: Axis
-  , rightAxis :: Axis
+  , startButton, backButton :: KeyState
+  , dpadUp, dpadDown, dpadLeft, dpadRight :: KeyState
+  , aButton, bButton, xButton, yButton :: KeyState
+  , leftStick , rightStick :: KeyState
+  , leftShoulder, rightShoulder :: KeyState
+  , leftAxis, rightAxis :: Axis
   }
 
 data Axis = Axis { xAxis :: Float, yAxis :: Float }

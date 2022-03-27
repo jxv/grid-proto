@@ -820,33 +820,33 @@ toTexture renderer surface = do
   SDL.freeSurface surface
   return texture
 
-drawTile :: (Int, Int) -> Tile -> View -> View
-drawTile xy tile m = Map.insertWith (flip (<>)) xy tile m
+drawTile :: View -> (Int, Int) -> Tile -> View
+drawTile m xy tile = Map.insertWith (flip (<>)) xy tile m
 
-drawTilesAt
-  :: View -- | Base tiles
-  -> (Int, Int)          -- | Offset
+drawView
+  :: View -- | Base view
+  -> (Int, Int)  -- | Offset
   -> View -- | Tiles to be placed
   -> View
-drawTilesAt old (x,y) new = foldr (\((x',y'), tile) m' -> drawTile (x+x', y+y') tile m') old (Map.toList new)
+drawView old (x,y) new = foldr (\((x',y'), tile) m' -> drawTile m' (x+x', y+y') tile) old (Map.toList new)
 
 mergeViews
-  :: View -- | Base tiles
-  -> View -- | Tiles to be placed
+  :: View -- | Base view
+  -> View -- | View to be placed
   -> View
-mergeViews old new = drawTilesAt old (0,0) new
+mergeViews old new = drawView old (0,0) new
 
 mergeViewport
-  :: View
-  -> Viewport
+  :: View -- | Base view
+  -> Viewport -- | To be placed
   -> View
-mergeViewport old vp = drawTilesAt old (vpXY vp) (Map.filterWithKey (\(x,y) _ -> x < w && y < h) (vpView vp))
+mergeViewport old vp = drawView old (vpXY vp) (Map.filterWithKey (\(x,y) _ -> x < w && y < h) (vpView vp))
   where
     (w,h) = vpDim vp
 
 mergeViewports
-  :: View
-  -> [Viewport]
+  :: View -- | Base view
+  -> [Viewport] -- | To be placed
   -> View
 mergeViewports = L.foldl' mergeViewport
 
