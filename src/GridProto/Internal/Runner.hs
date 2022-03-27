@@ -108,7 +108,7 @@ runGridProto GridProto
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
     let (V2 mouseX mouseY) = num <$> mousePos
-    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (cols, rows)
+    let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
     let input' = makeInput input mouseTilePos mouseClick eventPayloads

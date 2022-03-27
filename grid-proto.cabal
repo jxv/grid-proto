@@ -1,5 +1,5 @@
 name: grid-proto
-version: 0.3.0.0
+version: 0.2.0.2
 synopsis: Game engine for Prototyping on a Grid
 description: Exposes a heavily constrained and simple API around SDL2 with builtin font and sound effects.
 category: Game
