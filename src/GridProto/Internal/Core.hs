@@ -214,8 +214,6 @@ data Viewport = Viewport
   , vpDim :: (Int, Int)
   } deriving (Show, Eq, Generic)
 
-type Viewports = [Viewport]
-
 class MapTile a where
   mapTile
     :: ((Char, Color) -> (Char, Color))
@@ -822,33 +820,33 @@ toTexture renderer surface = do
   SDL.freeSurface surface
   return texture
 
-placeTile :: (Int, Int) -> Tile -> View -> View
-placeTile xy tile m = Map.insertWith (flip (<>)) xy tile m
+drawTile :: (Int, Int) -> Tile -> View -> View
+drawTile xy tile m = Map.insertWith (flip (<>)) xy tile m
 
-placeTilesAt
+drawTilesAt
   :: View -- | Base tiles
   -> (Int, Int)          -- | Offset
   -> View -- | Tiles to be placed
   -> View
-placeTilesAt old (x,y) new = foldr (\((x',y'), tile) m' -> placeTile (x+x', y+y') tile m') old (Map.toList new)
+drawTilesAt old (x,y) new = foldr (\((x',y'), tile) m' -> drawTile (x+x', y+y') tile m') old (Map.toList new)
 
-mergeTiles
+mergeViews
   :: View -- | Base tiles
   -> View -- | Tiles to be placed
   -> View
-mergeTiles old new = placeTilesAt old (0,0) new
+mergeViews old new = drawTilesAt old (0,0) new
 
 mergeViewport
   :: View
   -> Viewport
   -> View
-mergeViewport old vp = placeTilesAt old (vpXY vp) (Map.filterWithKey (\(x,y) _ -> x < w && y < h) (vpView vp))
+mergeViewport old vp = drawTilesAt old (vpXY vp) (Map.filterWithKey (\(x,y) _ -> x < w && y < h) (vpView vp))
   where
     (w,h) = vpDim vp
 
 mergeViewports
   :: View
-  -> Viewports
+  -> [Viewport]
   -> View
 mergeViewports = L.foldl' mergeViewport
 
@@ -888,6 +886,11 @@ findSymbols renderer font width ref color ch = do
         return $ Just (sym, off * width', width')
   where
     offsets = Map.fromList $ zip symbolList [0..]
+
+drawString :: Color -> (Int,Int) -> String -> View
+drawString color (x,y) str = fromList $ zipWith tile [0..] str
+  where
+    tile i sym = ((x + i, y), Tile (Just (sym, color)) Nothing Nothing)
 
 colorWheel0 :: [Color]
 colorWheel0 = [Red0, Orange0, Yellow0, Chartreuse0, Green0, Spring0, Cyan0, Azure0, Blue0, Violet0, Magenta0, Rose0]

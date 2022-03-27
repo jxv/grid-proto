@@ -3,7 +3,6 @@ module GridProto
   , runGridProto
   , defaultGridProto
   --
-  , Map, fromList, lookupMap, (!), delete, alter, insert, filterWithKey, member, notMember, toList
   , Color(..)
   , Shape(..)
   , Input(..)
@@ -16,16 +15,17 @@ module GridProto
   , Tile(..)
   , Sfx(..)
   , Viewport(..)
-  , Viewports
-  , View
   , MapTile(..)
+  --
+  , View, Map
+  , fromList, lookupMap, (!), delete, alter, insert, filterWithKey, member, notMember, toList
   , emptyView
+  --
+  , drawTile, drawTilesAt, mergeViews
+  , mergeViewport, mergeViewports
+  --
   , lookupKey
-  , placeTilesAt
-  , mergeTiles
-  , mergeViewport
-  , mergeViewports
-  , shade, tint
+  --
   , rd0, rd1, rd2
   , or0, or1, or2
   , yw0, yw1, yw2
@@ -42,11 +42,11 @@ module GridProto
   , gy0, gy1, gy2
   , wh0, wh1, wh2
   , bk0, bk1, bk2
-  , rainbow
-  , warms, cools
-  , colorValue
-  , sdlColor
+  , rainbow, warms, cools
   , colorWheel0, colorWheel1, colorWheel2
+  , shade, tint
+  --
+  , drawString
   ) where
 
 import Data.Map (Map, fromList, (!), delete, alter, insert, filterWithKey, member, notMember, toList)

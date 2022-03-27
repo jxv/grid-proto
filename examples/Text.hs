@@ -12,8 +12,4 @@ example = defaultGridProto
   }
 
 view :: View
-view = fromList $ line 0 "hello" ++ line 1 "world"
-  where
-    line y str = zipWith (tile y) [0..] str
-    tile y x sym = ((x, y), Tile (Just (sym, wh1)) Nothing Nothing)
-
+view = drawString wh1 (0,0) "hello" <> drawString wh1 (0,1) "world"
