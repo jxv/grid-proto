@@ -858,7 +858,7 @@ mergeViewports = L.foldl' mergeViewport
 loadFont :: SDL.Renderer -> Int -> IO (Font.Font, Int)
 loadFont renderer tileSize = (,) <$> Font.decode fontData size <*> pure size
   where
-    size = tileSize `div` 2
+    size = (tileSize * 3) `div` 4
 
 newFontColorMap :: IO (IORef (Map Color SDL.Texture))
 newFontColorMap = newIORef Map.empty

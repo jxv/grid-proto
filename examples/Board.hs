@@ -12,7 +12,7 @@ example = defaultGridProto
   { title = "Board Example"
   , rows = 8
   , cols = 8
-  , tilePixelSize = 64
+  , tilePixelSize = 32
   , updateFn = update
   , viewFn = view 8
   , quitFn = quit
@@ -37,9 +37,9 @@ view sides (mx,my,click) = fromList $ do
         if (x + y) `mod` 2 == 1
           then (Nothing, Nothing)
           else if y >= 0 && y <= 2
-            then (Just ('W', White1), Just (Circle, White1))
+            then (Just ('W', Black1), Just (FillCircle, White1))
             else if y >= 5 && y <= 7
-              then (Just ('B', Black1), Just (Circle, Black1))
+              then (Just ('B', White1), Just (FillCircle, Black1))
               else (Nothing, Nothing)
   return ((x,y), Tile symbol shape color)
 

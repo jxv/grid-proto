@@ -36,7 +36,7 @@ data GridProto state = GridProto
   , rows :: Int -- Default: 18
   , cols :: Int -- Default: 32
   -- Scaling and clear color
-  , tilePixelSize :: Int -- Default: 24 minimum for readable text
+  , tilePixelSize :: Int -- Default: 16 for text size at 12
   , backgroundColor :: Color -- Default: Black2
   -- Callbacks which are called each frame
   , updateFn :: Input -> state -> IO (state, [String]) -- [String] is user logging

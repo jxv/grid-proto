@@ -57,7 +57,7 @@ defaultGridProto = GridProto
   { title = "Grid Proto"
   , rows = 18
   , cols = 32
-  , tilePixelSize = 24
+  , tilePixelSize = 16
   , backgroundColor = Black2
   , updateFn = \_ s -> return (s, [])
   , viewFn = \_ -> emptyView
@@ -70,7 +70,7 @@ runGridProto GridProto
   { title
   , rows
   , cols
-  , tilePixelSize
+  , tilePixelSize = tps
   , backgroundColor
   , updateFn
   , sfxFn
@@ -82,7 +82,16 @@ runGridProto GridProto
   SDL.initialize [SDL.InitVideo, SDL.InitAudio, SDL.InitGameController]
   Font.initialize
   Mixer.openAudio Mixer.defaultAudio 256
-  window <- SDL.createWindow (pack title) SDL.defaultWindow { SDL.windowInitialSize = V2 (num $ cols * tilePixelSize) (num $ rows * tilePixelSize) }
+  let windowW = num (cols * tps)
+  let windowH = num (rows * tps)
+  window <- SDL.createWindow (pack title) SDL.defaultWindow
+    { SDL.windowInitialSize = V2 windowW windowH
+    , SDL.windowHighDPI = True
+    }
+  wsize@(V2 ww wh) <- SDL.glGetDrawableSize window
+  let tilePixelSize = num $ ww * num tps `div` windowW
+  let winDensity = fromIntegral tilePixelSize / fromIntegral tps :: Float
+  --
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   numJoysticks <- SDL.numJoysticks
   joystickDevices <- SDL.availableJoysticks
@@ -107,7 +116,7 @@ runGridProto GridProto
     let quit = quitFn state
     events <- SDL.pollEvents
     (SDL.P mousePos) <- SDL.getAbsoluteMouseLocation
-    let (V2 mouseX mouseY) = num <$> mousePos
+    let (V2 mouseX mouseY) = fmap floor $ (num <$> mousePos) * pure winDensity
     let mouseTilePos = tileByMousePosition tilePixelSize (mouseX, mouseY) (rows, cols)
     mouseClick <- ($ SDL.ButtonLeft) <$> SDL.getMouseButtons
     let eventPayloads = map SDL.eventPayload events
